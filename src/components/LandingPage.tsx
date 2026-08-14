@@ -44,7 +44,7 @@ export function LandingPage() {
       <img 
        src="/images/construction.png" 
        alt="Under Construction" 
-       className="absolute bottom-10 right-10 w-48 md:w-64 pointer-events-none z-0 opacity-80"
+       className="absolute bottom-0 right-5 w-48 md:w-64 pointer-events-none z-9 opacity-80"
       />
       {/* NAVBAR */}
       <nav className="w-full px-6 md:px-12 py-4 flex justify-between items-center border-b border-default">
