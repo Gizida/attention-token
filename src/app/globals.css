@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@theme {
+  /* Colors - automatically generates bg-*, text-*, border-* */
+  --color-background: #0b0d10;
+  --color-surface: #111419;
+  --color-surface-elevated: #171b21;
+
+  --color-default: #252a32; /* Allows: border-default */
+
+  --color-primary: #f1f3f5; /* Allows: text-primary */
+  --color-secondary: #9aa2ae; /* Allows: text-secondary */
+  --color-muted: #636b78;
+
+  --color-brand: #7cffb2; /* Allows: bg-brand */
+  --color-brand-hover: #9affc4;
+
+  --color-success: #59d98e;
+  --color-warning: #f2c866;
+  --color-danger: #ef6b73;
+  --color-info: #6ea8ff;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* Spacing */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-primary);
+  font-family: var(--font-inter);
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Apply the Inter font globally */
+body {
+  font-family: var(--font-inter);
+}
+
+/* --- Wallet Adapter UI Overrides --- */
+/* Override Solana Wallet Adapter UI to match our Dark Theme */
+
+/* Main Connect Buttons (Keep these pill-shaped as you liked them) */
+.wallet-adapter-button {
+  background-color: var(--color-brand) !important;
+  color: var(--color-background) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-inter) !important;
+  font-weight: 600 !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: var(--color-brand-hover) !important;
+}
+
+.wallet-adapter-button:not([disabled]):focus {
+  box-shadow: none !important;
+}
+
+/* Transparent "Select Wallet" button in the navbar */
+.wallet-adapter-button.wallet-adapter-button-trigger {
+  background-color: transparent !important;
+  border: 1px solid var(--color-brand) !important;
+  color: var(--color-brand) !important;
+}
+
+.wallet-adapter-button.wallet-adapter-button-trigger:hover {
+  background-color: var(--color-surface) !important;
+}
+
+/* --- MODAL POPUP OVERRIDES --- */
+
+/* The main popup container */
+.wallet-adapter-modal-wrapper {
+  background-color: var(--color-surface) !important;
+  border: 1px solid var(--color-default) !important;
+  border-radius: 8px !important; /* Sharp edges */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+
+.wallet-adapter-modal-wrapper * {
+  color: var(--color-primary) !important;
+}
+
+/* The individual wallet boxes inside the popup */
+.wallet-adapter-modal-list-item {
+  border-radius: 0px !important; /* Boxier list items */
+}
+
+.wallet-adapter-modal-list-item:hover {
+  background-color: var(--color-surface-elevated) !important;
+}
+
+.wallet-adapter-modal-list-item-description {
+  color: var(--color-secondary) !important;
+}
+
+/* The X close button */
+.wallet-adapter-modal-button-close {
+  background-color: var(--color-surface-elevated) !important;
+  width: 28px !important;  /* Smaller width */
+  height: 28px !important; /* Smaller height */
+  border-radius: 4px !important; /* Boxier */
+  padding: 0 !important;
+  top: 12px !important;
+  right: 12px !important;
+}
+
+/* Make the actual X SVG icon smaller */
+.wallet-adapter-modal-button-close svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.wallet-adapter-modal-button-close:hover {
+  background-color: var(--color-danger) !important;
+}
