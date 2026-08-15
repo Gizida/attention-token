@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
     }
 
     const result = await db.query(
-      'SELECT type, amount, provider, status, created_at FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
+      'SELECT type, amount, sol_amount, provider, status, created_at FROM transactions WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10',
       [userId]
     );
 

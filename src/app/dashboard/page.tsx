@@ -67,6 +67,9 @@ export default function DashboardHome() {
                 <div>
                   <p className="text-sm text-primary capitalize">{tx.type}</p>
                   <p className="text-xs text-muted">{new Date(tx.created_at).toLocaleString()}</p>
+                  {tx.type === 'withdraw' && tx.sol_amount && (
+                    <p className="text-xs text-brand">Received {Number(tx.sol_amount).toFixed(6)} SOL</p>
+                  )}
                 </div>
                 <p className={`text-sm font-bold ${tx.type === 'earn' ? 'text-success' : 'text-danger'}`}>
                   {tx.type === 'earn' ? '+' : '-'}{Number(tx.amount).toFixed(2)} credits

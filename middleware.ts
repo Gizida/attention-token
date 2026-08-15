@@ -6,8 +6,9 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Protected routes
+  
   if (pathname === '/' && token) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/dashboard/offers', request.url)); // <-- Change this
   }
 
   if (request.nextUrl.pathname.startsWith('/dashboard')) {

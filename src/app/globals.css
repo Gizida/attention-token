@@ -1,165 +1,283 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 @theme {
-  /* Colors - automatically generates bg-*, text-*, border-* */
-  --color-background: #0b0d10;
-  --color-surface: #111419;
-  --color-surface-elevated: #171b21;
+  --color-background: #06080c;
+  --color-surface: #0c1016;
+  --color-surface-elevated: #121820;
+  --color-surface-soft: #161d27;
+  --color-default: #202934;
+  --color-primary: #f3f7f4;
+  --color-secondary: #a4adb9;
+  --color-muted: #697382;
 
-  --color-default: #252a32; /* Allows: border-default */
+  --color-brand: #7cf5aa;
+  --color-brand-hover: #9dffc2;
+  --color-brand-deep: #46cc7b;
 
-  --color-primary: #f1f3f5; /* Allows: text-primary */
-  --color-secondary: #9aa2ae; /* Allows: text-secondary */
-  --color-muted: #636b78;
-
-  --color-brand: #7cffb2; /* Allows: bg-brand */
-  --color-brand-hover: #9affc4;
-
-  --color-success: #59d98e;
-  --color-warning: #f2c866;
-  --color-danger: #ef6b73;
+  --color-success: #65e39a;
+  --color-warning: #f1c86a;
+  --color-danger: #ef727a;
   --color-info: #6ea8ff;
 
-  /* Radius */
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-
-  /* Spacing */
-  --spacing-1: 4px;
-  --spacing-2: 8px;
-  --spacing-3: 12px;
-  --spacing-4: 16px;
-  --spacing-5: 20px;
-  --spacing-6: 24px;
-  --spacing-8: 32px;
-  --spacing-10: 40px;
-  --spacing-12: 48px;
-  --spacing-16: 64px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 }
 
-body {
-  background-color: var(--color-background);
+:root {
+  color-scheme: dark;
+}
+@layer base {
+ html {
+  scroll-behavior: smooth;
+  background: var(--color-background);
+ }
+
+ body {
+  margin: 0;
+  background: var(--color-background);
   color: var(--color-primary);
-  font-family: var(--font-inter);
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+ }
+
+ ::selection {
+  background: rgba(124, 245, 170, 0.24);
+  color: var(--color-primary);
+ }
+
+ a {
+  color: inherit;
+  text-decoration: none;
+ }
+
+ button,
+ a {
+  -webkit-tap-highlight-color: transparent;
+ }
+}
+/* --- Shared visual language --- */
+
+.site-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-/* Apply the Inter font globally */
-body {
-  font-family: var(--font-inter);
+.glow-brand {
+  box-shadow:
+    0 0 0 1px rgba(124, 245, 170, 0.08),
+    0 20px 80px rgba(65, 207, 118, 0.16);
 }
 
-/* --- Wallet Adapter UI Overrides --- */
-/* Override Solana Wallet Adapter UI to match our Dark Theme */
+.hero-orb {
+  background:
+    radial-gradient(circle at 45% 45%, rgba(124, 245, 170, 0.32), transparent 52%),
+    radial-gradient(circle at 65% 65%, rgba(70, 204, 123, 0.16), transparent 44%);
+  filter: blur(10px);
+}
 
-/* Main Connect Buttons (Keep these pill-shaped as you liked them) */
+.glass-panel {
+  background: linear-gradient(
+    180deg,
+    rgba(17, 23, 20, 0.82),
+    rgba(12, 16, 15, 0.88)
+  );
+  backdrop-filter: blur(18px);
+}
+
+.hero-word {
+  letter-spacing: -0.055em;
+}
+
+.section-eyebrow {
+  letter-spacing: 0.16em;
+}
+
+.border-glow {
+  border-color: rgba(124, 245, 170, 0.20);
+}
+
+/* --- Wallet Adapter UI --- */
+
 .wallet-adapter-button {
-  background-color: var(--color-brand) !important;
-  color: var(--color-background) !important;
-  border-radius: var(--radius-md) !important;
-  font-family: var(--font-inter) !important;
-  font-weight: 600 !important;
-  height: 40px !important;
-  padding: 0 16px !important;
-  transition: background-color 0.2s ease !important;
+  background: var(--color-brand) !important;
+  color: #07100b !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(124, 245, 170, 0.35) !important;
+  font-family: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 700 !important;
+  height: 44px !important;
+  padding: 0 17px !important;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease !important;
 }
 
 .wallet-adapter-button:hover {
-  background-color: var(--color-brand-hover) !important;
+  background: var(--color-brand-hover) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 30px rgba(124, 245, 170, 0.16) !important;
 }
 
 .wallet-adapter-button:not([disabled]):focus {
-  box-shadow: none !important;
+  box-shadow: 0 0 0 3px rgba(124, 245, 170, 0.14) !important;
 }
 
-/* Transparent "Select Wallet" button in the navbar */
 .wallet-adapter-button.wallet-adapter-button-trigger {
-  background-color: transparent !important;
-  border: 1px solid var(--color-brand) !important;
+  background: rgba(124, 245, 170, 0.06) !important;
+  border: 1px solid rgba(124, 245, 170, 0.28) !important;
   color: var(--color-brand) !important;
 }
 
 .wallet-adapter-button.wallet-adapter-button-trigger:hover {
-  background-color: var(--color-surface) !important;
+  background: rgba(124, 245, 170, 0.11) !important;
+  box-shadow: none !important;
 }
 
-/* --- MODAL POPUP OVERRIDES --- */
+/* --- Wallet modal --- */
 
-/* The main popup container */
 .wallet-adapter-modal-wrapper {
-  background-color: var(--color-surface) !important;
+  background: #10141b !important;
   border: 1px solid var(--color-default) !important;
-  border-radius: 8px !important; /* Sharp edges */
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55) !important;
 }
 
 .wallet-adapter-modal-wrapper * {
   color: var(--color-primary) !important;
 }
 
-/* The individual wallet boxes inside the popup */
 .wallet-adapter-modal-list-item {
-  border-radius: 0px !important; /* Boxier list items */
+  border-radius: 12px !important;
 }
 
 .wallet-adapter-modal-list-item:hover {
-  background-color: var(--color-surface-elevated) !important;
+  background: var(--color-surface-elevated) !important;
 }
 
 .wallet-adapter-modal-list-item-description {
   color: var(--color-secondary) !important;
 }
 
-/* The X close button */
 .wallet-adapter-modal-button-close {
-  background-color: var(--color-surface-elevated) !important;
-  width: 28px !important;  /* Smaller width */
-  height: 28px !important; /* Smaller height */
-  border-radius: 4px !important; /* Boxier */
+  background: var(--color-surface-elevated) !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 9px !important;
   padding: 0 !important;
   top: 12px !important;
   right: 12px !important;
 }
 
-/* Make the actual X SVG icon smaller */
 .wallet-adapter-modal-button-close svg {
-  width: 12px !important;
-  height: 12px !important;
+  width: 13px !important;
+  height: 13px !important;
 }
 
 .wallet-adapter-modal-button-close:hover {
-  background-color: var(--color-danger) !important;
+  background: #1a212b !important;
+}
+
+/* Ticker Animation */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused; /* Pauses on hover so users can read it */
+}
+
+/* --- Splash Screen Animations --- */
+
+/* Stars twinkling (motionless) */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.1; }
+  50% { opacity: 0.4; }
+}
+
+/* Stars drifting */
+@keyframes drift {
+  0% { transform: translate(0, 0); opacity: 0.1; }
+  50% { transform: translate(2px, -1px); opacity: 0.5; }
+  100% { transform: translate(0, 0); opacity: 0.1; }
+}
+
+/* Text breathing cycle (35% -> 55% -> 35%) */
+@keyframes breathe-slow {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.55; }
+}
+
+/* Utility classes */
+.animate-twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+.animate-drift {
+  animation: drift 6s ease-in-out infinite;
+}
+
+.animate-breathe-slow {
+  animation: breathe-slow 5s ease-in-out infinite;
+}
+
+/* Slide the landing page up from the bottom */
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Utility classes to trigger animations */
+.splash-hidden {
+  animation: fadeOut 1s ease forwards;
+}
+
+.splash-visible {
+  animation: fadeIn 1.5s ease forwards;
+}
+
+.page-slide-up {
+  animation: slideUp 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Warm editorial/paper section used for the landing-page use-case break. */
+.paper-texture {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(30, 35, 40, 0.035) 0 0.7px, transparent 0.8px),
+    radial-gradient(circle at 80% 70%, rgba(30, 35, 40, 0.025) 0 0.6px, transparent 0.7px),
+    radial-gradient(circle at 45% 55%, rgba(255, 255, 255, 0.75) 0 0.8px, transparent 0.9px);
+  background-size: 17px 17px, 23px 23px, 19px 19px;
+  mix-blend-mode: multiply;
+}
+
+/* Editorial paper section: subtle textbook grid + paper grain. */
+.paper-grid {
+  background-image:
+    linear-gradient(rgba(45, 50, 54, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 50, 54, 0.045) 1px, transparent 1px);
+  background-size: 30px 30px;
+  mask-image: linear-gradient(to bottom, transparent, black 8%, black 92%, transparent);
+}
+
+.paper-editorial {
+  isolation: isolate;
+}
+
+.paper-editorial > .paper-texture {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(30, 35, 40, 0.032) 0 0.7px, transparent 0.8px),
+    radial-gradient(circle at 80% 70%, rgba(30, 35, 40, 0.022) 0 0.6px, transparent 0.7px),
+    radial-gradient(circle at 45% 55%, rgba(255, 255, 255, 0.72) 0 0.8px, transparent 0.9px);
+  background-size: 17px 17px, 23px 23px, 19px 19px;
+  mix-blend-mode: multiply;
 }

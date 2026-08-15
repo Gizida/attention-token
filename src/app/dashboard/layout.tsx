@@ -1,5 +1,7 @@
 'use client';
 
+import { Ticker } from '@/components/Ticker';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -12,8 +14,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const { connected } = useWallet();
   const isAdmin = user?.wallet_address === process.env.NEXT_PUBLIC_ADMIN_WALLET_ADDRESS;
 
+  useEffect(() => {
+    // If the user data has loaded, but the wallet is disconnected, 
+    // trigger the backend logout automatically.
+    if (user && !connected) {
+      const autoLogout = async () => {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (error) {
+          console.error('Auto-logout failed:', error);
+        } finally {
+          router.push('/');
+        }
+      };
+      autoLogout();
+    }
+  }, [user, connected, router]);
+  
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -52,6 +72,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/offers', label: 'Offers & Tasks' },
+    { href: '/dashboard/leaderboard', label: 'Leaderboard' },
     { href: '/dashboard/withdraw', label: 'Withdraw' },
     ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin Panel' }] : []),
   ];
@@ -108,8 +129,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* MAIN CONTENT AREA */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <Ticker />
+         <div className="p-8">    
           {children}
+         </div>
         </main>
       </div>
     </UserContext.Provider>

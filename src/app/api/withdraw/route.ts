@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
 
     // Record the withdrawal in the ledger as 'pending'
     const txRes = await db.query(
-      'INSERT INTO transactions (user_id, type, amount, provider, status) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [userId, 'withdraw', creditAmount, 'solana', 'pending']
+      'INSERT INTO transactions (user_id, type, amount, sol_amount, provider, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [userId, 'withdraw', creditAmount, solToSend, 'solana', 'pending']
     );
     const dbTxId = txRes.rows[0].id;
 

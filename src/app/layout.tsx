@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "./providers";
-import './globals.css';
+import "./globals.css";
 
 const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "Solana Auth App",
-  description: "Login with Solana wallet",
+  title: "AttentionToken — Earn From Your Attention",
+  description:
+    "Complete tasks, answer surveys, watch content, and turn your attention into on-chain rewards.",
 };
 
 export default function RootLayout({
@@ -19,7 +20,6 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Add suppressHydrationWarning here!
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
         <Providers>{children}</Providers>
