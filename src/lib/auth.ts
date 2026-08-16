@@ -1,6 +1,7 @@
 import db from './db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -20,10 +21,12 @@ export async function getOrCreateUser(walletAddress: string) {
     return userResult.rows[0];
   }
   
+  const referralCode = crypto.createHash('md5').update(walletAddress).digest('hex').substring(0, 8);
+
   // Create new user
   const newUser = await db.query(
-    'INSERT INTO users (wallet_address) VALUES ($1) RETURNING *',
-    [walletAddress]
+    'INSERT INTO users (wallet_address, referral_code) VALUES ($1, $2) RETURNING *',
+    [walletAddress, referralCode]
   );
   
   return newUser.rows[0];

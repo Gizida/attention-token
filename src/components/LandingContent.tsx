@@ -45,7 +45,12 @@ export function LandingContent() {
       const handleAuth = async () => {
         try {
           setStatus("Please sign the message in your wallet...");
-          await authenticate();
+          const urlParams = new URLSearchParams(window.location.search);
+          let refCode = urlParams.get('ref') || localStorage.getItem('refCode');
+          if (urlParams.get('ref')) {
+             localStorage.setItem('refCode', urlParams.get('ref'));
+          }
+          await authenticate(refCode);
           setStatus("Success! Redirecting to offers...");
           router.push("/dashboard/offers");
         } catch (err) {

@@ -5,9 +5,9 @@ import { useCallback } from 'react';
 import bs58 from 'bs58';
 
 export function useWalletAuth() {
-  const { publicKey, signMessage, connected } = useWallet();
+  const { publicKey, signMessage, connected} = useWallet();
 
-  const authenticate = useCallback(async () => {
+  const authenticate = useCallback(async (refCode?: string | null) => {
     if (!publicKey || !signMessage) {
       throw new Error('Wallet not connected or does not support signing.');
     }
@@ -28,7 +28,8 @@ export function useWalletAuth() {
         body: JSON.stringify({
           publicKey: publicKey.toString(),
           signature: signatureBase58,
-          message
+          message,
+          refCode: refCode || null // Send the code!
         })
       });
 

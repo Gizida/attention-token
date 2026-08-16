@@ -114,6 +114,8 @@ export async function POST(req: NextRequest) {
 
     await db.query('COMMIT');
 
+    await db.query('REFRESH MATERIALIZED VIEW CONCURRENTLY leaderboard_view');
+
     return NextResponse.json({ 
       success: true, 
       message: `Success! ${solToSend.toFixed(6)} SOL has been sent to your wallet.`,

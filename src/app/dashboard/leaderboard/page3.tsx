@@ -51,7 +51,7 @@ export default function LeaderboardPage() {
       accent: '#ffffff',
       text: '#fffdf5',
       surface:
-        'linear-gradient(145deg, rgba(211, 166, 53, 0.97) 0%, rgba(158, 105, 19, 0.95) 48%, rgba(91, 58, 10, 0.99) 100%)',
+        'linear-gradient(145deg, rgba(186, 134, 26, 0.95) 0%, rgba(123, 76, 8, 0.92) 48%, rgba(68, 43, 7, 0.98) 100%)',
       glow: 'rgba(245, 193, 67, 0.18)',
       border: 'rgba(255,255,255,0.82)',
       softBorder: 'rgba(255,255,255,0.18)',
@@ -157,18 +157,9 @@ export default function LeaderboardPage() {
               }}
             >
               <div
-                className="pointer-events-none absolute inset-0 opacity-45"
+                className="pointer-events-none absolute inset-x-0 top-0 h-24 opacity-50"
                 style={{
-                  background: `
-                    radial-gradient(circle at 50% -8%, ${theme.border}, transparent 42%),
-                    linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 32%, transparent 100%)
-                  `,
-                }}
-              />
-              <div
-                className="pointer-events-none absolute inset-x-10 bottom-0 h-20 rounded-full blur-3xl opacity-20"
-                style={{
-                  backgroundColor: theme.accent,
+                  background: `radial-gradient(circle at 50% 0%, ${theme.border}, transparent 70%)`,
                 }}
               />
 
@@ -249,7 +240,7 @@ export default function LeaderboardPage() {
 
       {/* Remaining leaderboard */}
       {remainingLeaders.length > 0 && (
-        <section className="mt-10 overflow-hidden rounded-t-md rounded-b-none border border-default bg-surface">
+        <section className="mt-10 overflow-hidden rounded-2xl border border-default bg-surface">
           <div className="grid grid-cols-12 gap-4 border-b border-default bg-surface-elevated px-6 py-3 text-xs uppercase tracking-[0.16em] text-muted md:px-7">
             <div className="col-span-2 md:col-span-1">Rank</div>
             <div className="col-span-6 md:col-span-7">Wallet</div>
