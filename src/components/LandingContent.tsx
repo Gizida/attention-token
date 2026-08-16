@@ -50,7 +50,7 @@ export function LandingContent() {
           if (urlParams.get('ref')) {
              localStorage.setItem('refCode', urlParams.get('ref'));
           }
-          await authenticate(refCode);
+          await authenticate(refCode || undefined);
           setStatus("Success! Redirecting to offers...");
           router.push("/dashboard/offers");
         } catch (err) {
