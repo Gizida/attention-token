@@ -5,6 +5,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom"; // Add this import!
 
 function LogoMark() {
   return (
@@ -45,12 +46,25 @@ export function LandingContent() {
       const handleAuth = async () => {
         try {
           setStatus("Please sign the message in your wallet...");
+          
+          // 1. Look for the ref code
           const urlParams = new URLSearchParams(window.location.search);
-          let refCode = urlParams.get('ref') || localStorage.getItem('refCode');
-          if (urlParams.get('ref')) {
-             localStorage.setItem('refCode', urlParams.get('ref'));
+          const urlRef = urlParams.get('ref');
+          
+          // 2. If it exists in the URL, save it to localStorage
+          if (urlRef) {
+            localStorage.setItem('refCode', urlRef);
           }
-          await authenticate(refCode || undefined);
+          
+          // 3. Get from localStorage (or fallback to undefined)
+          const localRef = localStorage.getItem('refCode');
+          
+          // 4. Force TypeScript to accept this as a string or undefined
+          const refCode: string | undefined = (urlRef || localRef || undefined) as string | undefined;
+
+          // 5. Pass it in!
+          await authenticate(refCode);
+          
           setStatus("Success! Redirecting to offers...");
           router.push("/dashboard/offers");
         } catch (err) {
@@ -497,11 +511,20 @@ export function LandingContent() {
         </div>
       </footer>
 
-      {status && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50" 
-          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-default)' }}>
-           <p className="text-sm animate-pulse text-brand">{status}</p>
-        </div>
+      {/* 
+        TOAST PORTAL: 
+        Using createPortal to teleport the toast to the <body> tag.
+        This escapes the CSS transform on the parent wrapper, making fixed positioning work properly!
+      */}
+      {typeof document !== "undefined" && status && createPortal(
+        <div 
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-3 rounded-lg shadow-lg z-[9999]" 
+          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-default)' }}
+        >
+          <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+          <p className="text-sm text-primary">{status}</p>
+        </div>,
+        document.body
       )}
     </div>
   );
