@@ -1,11 +1,13 @@
 "use client";
 
+import { CookieConsent } from './CookieConsent';
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useWalletAuth } from "@/hooks/useWalletAuth";
 import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom"; // Add this import!
+import { createPortal } from "react-dom";
+import { BackgroundBeams } from "./BackgroundBeams";
 
 function LogoMark() {
   return (
@@ -31,8 +33,29 @@ export function LandingContent() {
   const { connected, publicKey } = useWallet();
   const { authenticate } = useWalletAuth();
   const router = useRouter();
-  const [status, setStatus] = useState("");
+  const [stats, setStats] = useState<{ totalSol: string; recentWallet: string | null; recentAmount: string | null }>({
+    totalSol: "0.0000",
+    recentWallet: null,
+    recentAmount: null
+  });
+
+  // Fetch public stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/public-stats', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch public stats');
+      }
+    };
+    fetchStats();
+  }, []);
   const [mounted, setMounted] = useState(false);
+  const [status, setStatus] = useState("");
   const hasAttemptedAuth = useRef(false);
 
   useEffect(() => {
@@ -46,25 +69,19 @@ export function LandingContent() {
       const handleAuth = async () => {
         try {
           setStatus("Please sign the message in your wallet...");
-          
-          // 1. Look for the ref code
+
           const urlParams = new URLSearchParams(window.location.search);
           const urlRef = urlParams.get('ref');
-          
-          // 2. If it exists in the URL, save it to localStorage
+
           if (urlRef) {
             localStorage.setItem('refCode', urlRef);
           }
-          
-          // 3. Get from localStorage (or fallback to undefined)
+
           const localRef = localStorage.getItem('refCode');
-          
-          // 4. Force TypeScript to accept this as a string or undefined
           const refCode: string | undefined = (urlRef || localRef || undefined) as string | undefined;
 
-          // 5. Pass it in!
           await authenticate(refCode);
-          
+
           setStatus("Success! Redirecting to offers...");
           router.push("/dashboard/offers");
         } catch (err) {
@@ -78,185 +95,122 @@ export function LandingContent() {
     }
   }, [connected, publicKey, authenticate, router]);
 
+  // The wallet adapter emits the same trigger class everywhere.
+  // These wrappers let globals.css give the header and page CTAs different treatments.
   const WalletCTA = ({
+    variant = "page",
     fullWidth = false,
-    compact = false,
   }: {
+    variant?: "page" | "header";
     fullWidth?: boolean;
-    compact?: boolean;
-  }) => (
-    <div className={fullWidth ? "w-full" : "w-fit"}>
-      {mounted ? (
-        <WalletMultiButton
-          className={[
-            "!border-glow !font-semibold",
-            fullWidth ? "!w-full" : "!w-auto",
-            compact ? "!h-10 !px-4 !text-sm" : "!h-12 !px-6 !text-sm",
-          ].join(" ")}
-        />
-      ) : (
-        <div
-          className={[
-            "animate-pulse rounded-xl bg-surface-elevated",
-            fullWidth ? "h-12 w-full" : compact ? "h-10 w-28" : "h-12 w-44",
-          ].join(" ")}
-        />
-      )}
-    </div>
-  );
+  }) => {
+    const wrapperClass =
+      variant === "header"
+        ? "wallet-cta-header w-fit"
+        : `wallet-cta-page ${fullWidth ? "w-full" : "w-fit"}`;
 
-  return (
-    <div className="min-h-screen overflow-x-hidden bg-background text-primary">
+    return (
+      <div className={wrapperClass}>
+        {mounted ? (
+          <WalletMultiButton />
+        ) : (
+          <div
+            className={[
+              "animate-pulse rounded-xl bg-surface-elevated",
+              variant === "header"
+                ? "h-9 w-28"
+                : fullWidth
+                  ? "h-14 w-full"
+                  : "h-14 w-48",
+            ].join(" ")}
+          />
+        )}
+      </div>
+    );
+  };
+
+    return (
+    // Removed overflow-x-hidden from here so it doesn't break the fixed header
+    <div className="landing-shell min-h-screen bg-background text-primary">
       <div className="pointer-events-none fixed inset-0 -z-10 site-grid opacity-70" />
+      
+            {/* Hero */}
+      <main className="pt-[64px]">
+        <section className="hero-section relative mx-auto max-w-7xl px-5 pb-24 pt-16 sm:px-8 sm:pt-24 lg:pb-28 lg:pt-28">
+          <div className="absolute left-1/2 top-0 -z-10 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-white/[0.018] blur-3xl" />
+          <div aria-hidden="true" className="hero-grid pointer-events-none absolute inset-0 overflow-hidden" />
+          <BackgroundBeams className="z-[1] opacity-80" />
 
-      {/* Navigation */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.05] bg-background/75 backdrop-blur-xl">
-        <nav className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-5 sm:px-8">
-          <a href="#" className="flex items-center gap-3">
-            <LogoMark />
-            <div>
-              <div className="text-[15px] font-bold tracking-[-0.02em]">AttentionToken</div>
-              <div className="text-[10px] uppercase tracking-[0.22em] text-muted">
-                Earn attention
-              </div>
+          {/* Main Hero Text - Now takes up the full width space */}
+          <div className="relative z-10 max-w-4xl lg:ml-[3%] lg:-translate-y-6">
+            <h1 className="hero-word text-6xl font-semibold leading-[0.91] text-primary sm:text-7xl lg:text-[104px]">
+              Your time has{" "}
+              <span className="hero-gem">
+                value.
+              </span>
+            </h1>
+
+            <p className="mt-7 max-w-xl text-base leading-7 text-secondary sm:text-lg">
+              Complete offers, answer surveys, watch sponsored content, and
+              turn your attention into credits you can redeem for SOL or the
+              AttentionToken ecosystem.
+            </p>
+
+            <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <WalletCTA variant="page" />
+              <a
+                href="#how-it-works"
+                className="inline-flex h-12 items-center rounded-xl border border-transparent px-5 text-sm font-semibold text-secondary transition hover:bg-white/[0.08] hover:text-primary"
+              >
+                See how it works
+              </a>
             </div>
-          </a>
-
-          <div className="hidden items-center gap-8 text-sm text-secondary md:flex">
-            <a href="#how-it-works" className="transition hover:text-primary">
-              How it works
-            </a>
-            <a href="#rewards" className="transition hover:text-primary">
-              Rewards
-            </a>
-            <a href="#why-attention" className="transition hover:text-primary">
-              Why AttentionToken
-            </a>
           </div>
 
-          <WalletCTA compact />
-        </nav>
-      </header>
+          {/* Bottom Stats Bar: Indicators on left, Live Stats on right */}
+          <div className="relative z-10 mt-16 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            
+            {/* Left side: Indicators */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-muted">
+              <span className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                Solana-native
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                Wallet-based account
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+                Earn on your schedule
+              </span>
+            </div>
 
-      {/* Hero */}
-      <main>
-        <section className="relative mx-auto max-w-7xl px-5 pb-24 pt-12 sm:px-8 sm:pt-20 lg:pb-28 lg:pt-24">
-          <div className="absolute left-1/2 top-0 -z-10 h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-white/[0.018] blur-3xl" />
-
-          <div className="grid items-center gap-20 lg:grid-cols-[1.02fr_0.98fr] lg:gap-24">
-            <div>
-              <SectionLabel>Attention, finally valued</SectionLabel>
-
-              <h1 className="hero-word mt-6 max-w-3xl text-5xl font-semibold leading-[0.96] text-primary sm:text-6xl lg:text-[76px]">
-                Your time has{" "}
-                <span className="bg-gradient-to-r from-brand to-brand-deep bg-clip-text text-transparent">
-                  value.
+            {/* Right side: Platform Stats (Numbers above Titles) */}
+            <div className="flex gap-8 sm:gap-12">
+              <div className="flex flex-col gap-1">
+                {stats.recentWallet ? (
+                  <span className="text-base font-bold text-primary font-mono">
+                    {stats.recentWallet.slice(0, 4)}...{stats.recentWallet.slice(-4)} redeemed {stats.recentAmount} SOL
+                  </span>
+                ) : (
+                  <span className="text-base font-bold text-muted font-mono">Awaiting first withdrawal...</span>
+                )}
+                <span className="text-xs text-muted uppercase tracking-wider">
+                  Most recent
                 </span>
-              </h1>
-
-              <p className="mt-7 max-w-xl text-base leading-7 text-secondary sm:text-lg">
-                Complete offers, answer surveys, watch sponsored content, and
-                turn your attention into credits you can redeem for SOL or the
-                AttentionToken ecosystem.
-              </p>
-
-              <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <WalletCTA />
-                <a
-                  href="#how-it-works"
-                  className="inline-flex h-12 items-center justify-center rounded-xl border border-default bg-surface px-5 text-sm font-semibold text-secondary transition hover:border-white/10 hover:bg-surface-elevated hover:text-primary"
-                >
-                  See how it works
-                </a>
               </div>
-
-              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-xs text-muted">
-                <span className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  Solana-native
+              
+              <div className="flex flex-col gap-1">
+                <span className="text-base font-bold text-brand font-mono">
+                  {stats.totalSol} SOL
                 </span>
-                <span className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  Wallet-based account
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand" />
-                  Earn on your schedule
+                <span className="text-xs text-muted uppercase tracking-wider">
+                  Awarded so far
                 </span>
               </div>
             </div>
 
-            {/* Product preview placeholder */}
-            <div className="relative">
-              <div className="absolute -inset-8 rounded-[34px] bg-brand/[0.035] blur-3xl" />
-              <div className="glow-brand glass-panel relative rounded-[28px] border border-white/[0.08] p-3">
-                <div className="rounded-[22px] border border-white/[0.06] bg-[#0b1017] p-5 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[11px] font-medium uppercase tracking-[0.17em] text-muted">
-                        Dashboard preview
-                      </div>
-                      <div className="mt-2 text-lg font-semibold">Your earning activity</div>
-                    </div>
-                    <span className="rounded-full border border-brand/20 bg-brand/[0.08] px-2.5 py-1 text-[10px] font-medium text-brand">
-                      LIVE PREVIEW
-                    </span>
-                  </div>
-
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    {[
-                      ["Available credits", "1,284.50"],
-                      ["Today", "+182.00"],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                        className="rounded-2xl border border-white/[0.06] bg-surface px-4 py-4"
-                      >
-                        <div className="text-[11px] text-muted">{label}</div>
-                        <div className="mt-2 text-xl font-semibold tracking-[-0.03em]">
-                          {value}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 rounded-2xl border border-white/[0.06] bg-surface p-4">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-secondary">Earning activity</span>
-                      <span className="text-muted">Last 7 days</span>
-                    </div>
-                    <div className="mt-5 flex h-32 items-end gap-2">
-                      {[28, 46, 38, 64, 58, 88, 72, 104, 84, 116, 98, 124].map(
-                        (height, index) => (
-                          <div key={index} className="flex-1">
-                            <div
-                              className="w-full rounded-t-md bg-gradient-to-t from-brand/25 to-brand/90"
-                              style={{ height: `${height}px` }}
-                            />
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-brand/15 bg-brand/[0.045] p-4">
-                      <div className="text-[11px] uppercase tracking-[0.14em] text-muted">
-                        Redeem
-                      </div>
-                      <div className="mt-2 font-semibold text-brand">SOL</div>
-                      <div className="mt-1 text-xs text-secondary">
-                        Convert credits when you are ready.
-                      </div>
-                    </div>
-                    <div className="flex min-h-[112px] items-center justify-center rounded-2xl border border-dashed border-white/[0.1] bg-white/[0.015] px-4 text-center text-xs leading-5 text-muted">
-                      Replace this area with your product screenshot or custom
-                      artwork.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -479,7 +433,7 @@ export function LandingContent() {
                 reward can start with a few minutes.
               </p>
               <div className="mx-auto mt-8 max-w-xs">
-                <WalletCTA fullWidth />
+                <WalletCTA variant="page" fullWidth />
               </div>
               <p className="mt-4 text-xs text-muted">
                 No password required. Sign with your wallet to continue.
@@ -488,28 +442,82 @@ export function LandingContent() {
           </div>
         </section>
       </main>
-
+            
       {/* Footer */}
-      <footer className="border-t border-white/[0.05]">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <LogoMark />
-            <div>
-              <div className="text-sm font-semibold">AttentionToken</div>
-              <div className="text-xs text-muted">Turn attention into on-chain value.</div>
+      <footer className="border-t border-white/[0.05] bg-background">
+        <div className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+          {/* Using flex to push brand to the left, and link columns to the right */}
+          <div className="flex flex-col md:flex-row justify-between gap-12">
+            
+            {/* Left side: Brand */}
+            <div className="flex flex-col gap-4 max-w-xs">
+              <div className="flex items-center gap-3">
+                <LogoMark />
+                <div>
+                  <div className="text-sm font-semibold text-primary">AttentionToken</div>
+                  <div className="text-xs text-muted">Turn attention into on-chain value.</div>
+                </div>
+              </div>
+              <p className="text-xs text-muted">
+                The Web3 rewards platform that pays you for your time.
+              </p>
+            </div>
+
+            <div className="w-full max-w-xs">
+              <div className="text-sm font-semibold text-primary">Need help?</div>
+              <p className="mt-2 text-sm leading-6 text-secondary">
+                Questions about offers, withdrawals, or your account? We are here to help.
+              </p>
+              <a
+                href="mailto:support@attentiontoken.net"
+                className="mt-4 inline-flex text-sm font-semibold text-brand transition hover:text-brand-hover"
+              >
+                Contact support →
+              </a>
+            </div>
+
+            {/* Right side: Columns grouped together */}
+            <div className="grid grid-cols-2 gap-8 md:gap-16">
+              
+              {/* Column 1: Policies */}
+              <div className="flex flex-col gap-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Policies</h4>
+                <a href="/terms" className="text-sm text-muted hover:text-primary transition w-fit">Terms of Service</a>
+                <a href="/privacy" className="text-sm text-muted hover:text-primary transition w-fit">Privacy Policy</a>
+                <a href="/cookies" className="text-sm text-muted hover:text-primary transition w-fit">Cookie Policy</a>
+              </div>
+
+              {/* Column 2: Elsewhere (with icons) */}
+              <div className="flex flex-col gap-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Elsewhere</h4>
+                <a href="#" className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition w-fit">
+                  Telegram
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+                <a href="#" className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition w-fit">
+                  Twitter
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+                <a href="#" className="flex items-center gap-1.5 text-sm text-muted hover:text-primary transition w-fit">
+                  Github
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+              </div>
+
             </div>
           </div>
-
-          <div className="flex gap-6 text-xs text-muted">
-            <a href="#" className="transition hover:text-primary">
-              Terms
-            </a>
-            <a href="#" className="transition hover:text-primary">
-              Privacy
-            </a>
+          
+          {/* Copyright Bar */}
+          <div className="mt-12">
+            <p className="text-xs text-muted text-center md:text-left">
+              © {new Date().getFullYear()} AttentionToken. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
+
+      {/* Cookie Consent Bar */}
+      <CookieConsent />
 
       {/* 
         TOAST PORTAL: 

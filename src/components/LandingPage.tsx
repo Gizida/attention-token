@@ -1,61 +1,65 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SplashScreen } from "./SplashScreen";
 import { LandingContent } from "./LandingContent";
+import { LandingHeader } from "./LandingHeader";
+import { SplashScreen } from "./SplashScreen";
 
 export function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
-  const [slidePageUp, setSlidePageUp] = useState(true);
+  const [pageEntered, setPageEntered] = useState(false);
+  const [contentSettled, setContentSettled] = useState(false);
 
   useEffect(() => {
-    // Mark as mounted (prevents hydration mismatch)
     setMounted(true);
-    
-    // Check if the user has seen the splash screen before
-    const hasSeenSplash = localStorage.getItem('hasSeenSplash');
-    
-    if (!hasSeenSplash) {
-      // First time visitor: show splash, keep page pushed down
-      setShowSplash(true);
-      setSlidePageUp(false);
-    } else {
-      // Returning visitor: skip splash, show page immediately
-      setShowSplash(false);
-      setSlidePageUp(true);
+
+    if (localStorage.getItem("hasSeenSplash")) {
+      setPageEntered(true);
+      setContentSettled(true);
+      return;
     }
+
+    setShowSplash(true);
   }, []);
 
-  // While checking localStorage, render a black screen so there is no flash of unstyled content
+  const finishSplash = () => {
+    setShowSplash(false);
+    localStorage.setItem("hasSeenSplash", "true");
+
+    // Start the landing entrance on the next frame, after the overlay unmounts.
+    requestAnimationFrame(() => setPageEntered(true));
+  };
+
   if (!mounted) {
-    return <div className="fixed inset-0 bg-background z-50" />;
+    return <div className="fixed inset-0 z-50 bg-background" />;
   }
 
   return (
-    <>
-      {/* 1. Splash Screen Overlay */}
-      {showSplash && (
-        <SplashScreen 
-          onFinished={() => {
-            setShowSplash(false);
-            setSlidePageUp(true);
-            // Set the flag so they never see it again
-            localStorage.setItem('hasSeenSplash', 'true');
-          }} 
-        />
-      )}
+    <div className="min-h-screen bg-background">
+      {/* A viewport-level sibling: never place this inside the reveal wrapper. */}
+      <LandingHeader visible={pageEntered} />
 
-      {/* 2. Actual Landing Page Content */}
-      <div 
-        className={`fixed inset-0 overflow-y-auto transition-all duration-1000 ease-out ${
-          slidePageUp 
-            ? 'translate-y-0 blur-none opacity-100' 
-            : 'translate-y-full blur-xl opacity-0'
-        }`}
+      {/* This remains in ordinary document flow; only the landing content animates. */}
+      <div
+        className={[
+          "min-h-screen pt-4 transition-[opacity,transform] duration-1000 ease-out",
+          pageEntered
+            ? contentSettled
+              ? "opacity-100 transform-none"
+              : "translate-y-0 opacity-100"
+            : "translate-y-[18vh] opacity-0",
+        ].join(" ")}
+        onTransitionEnd={(event) => {
+          if (pageEntered && event.propertyName === "transform") {
+            setContentSettled(true);
+          }
+        }}
       >
         <LandingContent />
       </div>
-    </>
+
+      {showSplash && <SplashScreen onFinished={finishSplash} />}
+    </div>
   );
 }

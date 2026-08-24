@@ -53,7 +53,7 @@ export function SplashScreen({ onFinished }: { onFinished: () => void }) {
   return (
     <div 
       onClick={handleClick}
-      className={`fixed inset-0 z-50 bg-black cursor-pointer overflow-hidden transition-opacity duration-1000 ${
+      className={`fixed inset-0 z-[150] bg-black cursor-pointer overflow-hidden transition-opacity duration-1000 ${
         phase === 'exiting' ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
