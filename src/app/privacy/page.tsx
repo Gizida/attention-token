@@ -62,8 +62,6 @@ word-break: break-word !important;
         font-family: Arial ;
       }
     </style>
-      </div>
-      <br><div><span data-custom-class='body_text'>This Privacy Policy was created using Termly's </span><a href="https://termly.io/products/privacy-policy-generator/" target="_blank" rel="noopener external" data-custom-class='link'>Privacy Policy Generator</a></div>
   `;
 
   // 2. We clean Termly's branding, tags, and inline styles

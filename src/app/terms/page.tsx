@@ -135,8 +135,6 @@ Calibri;color:#595959;mso-themecolor:text1;mso-themetint:166;"><strong><bdt clas
         font-family: Arial ;
       }
     </style>
-      </div>
-      <br><div><span data-custom-class='body_text'>This Terms and Conditions was created using Termly's </span><a href="https://termly.io/products/terms-and-conditions-generator/" target="_blank" rel="noopener external" data-custom-class='link'>Terms and Conditions Generator</a></div>
   `;
 
   // 2. We clean Termly's branding, tags, and inline styles
