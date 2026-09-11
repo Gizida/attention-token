@@ -8,7 +8,11 @@ export interface UserData {
   balance: number;
 }
 
-export const UserContext = createContext<UserData | null>(null);
+export interface UserContextValue extends UserData {
+  refreshUser: () => Promise<void>;
+}
+
+export const UserContext = createContext<UserContextValue | null>(null);
 
 // This is a custom hook that makes it easy to get the user in any component
 export function useUser() {

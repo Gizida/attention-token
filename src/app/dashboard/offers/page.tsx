@@ -1,72 +1,138 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+
+import { useUser } from '@/context/UserContext';
+
+type OfferwallSession = {
+  mode: 'live' | 'preview';
+  url: string;
+};
 
 export default function OffersPage() {
-  const router = useRouter();
-  const [loading, setLoading] = useState<string | null>(null);
+  const { balance, refreshUser } = useUser();
+  const [session, setSession] = useState<OfferwallSession | null>(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [refreshingBalance, setRefreshingBalance] = useState(false);
 
-  // Simulate completing an offer
-  const handleCompleteOffer = async (offerId: string, reward: number) => {
-    setLoading(offerId);
+  const loadSession = useCallback(async () => {
+    setLoading(true);
+    setError('');
+
     try {
-      // We get the user ID from localStorage where we might have stored it, 
-      // OR we can just pass it via the URL. Since the mock postback expects a GET request:
-      const userId = localStorage.getItem('userId') || '1'; // fallback to 1 for testing
-      
-      const response = await fetch(`/api/dev/mock-postback?user_id=${userId}&amount=${reward}&offer_id=${offerId}`);
-      
-      if (response.ok) {
-        // Redirect to dashboard to see the updated balance
-        window.location.href = '/dashboard';
-      } else {
-        alert('Failed to complete offer. You might have already completed it.');
-      }
-    } catch (error) {
-      console.error('Error completing offer:', error);
-    } finally {
-      setLoading(null);
-    }
-  };
+      const response = await fetch('/api/offerwall/session', { cache: 'no-store' });
+      const data = await response.json();
 
-  // Mock offers data
-  const mockOffers = [
-    { id: 'mock_survey_1', title: 'Complete a Quick Survey', desc: 'Answer 5 questions about your shopping habits.', reward: 50, provider: 'AdGate' },
-    { id: 'mock_game_1', title: 'Reach Level 10 in Space Game', desc: 'Download and reach level 10 in the mobile game.', reward: 500, provider: 'OfferToro' },
-    { id: 'mock_signup_1', title: 'Sign up for Newsletter', desc: 'Subscribe to our partner\'s tech newsletter.', reward: 25, provider: 'CPX Research' },
-  ];
+      if (!response.ok) throw new Error(data.error || 'Unable to load offers.');
+      setSession(data);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Unable to load offers.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const refreshBalance = useCallback(async () => {
+    setRefreshingBalance(true);
+    try {
+      await refreshUser();
+    } catch {
+      // The dashboard session handler will take care of expired sessions.
+    } finally {
+      setRefreshingBalance(false);
+    }
+  }, [refreshUser]);
+
+  useEffect(() => {
+    loadSession();
+  }, [loadSession]);
+
+  useEffect(() => {
+    const interval = window.setInterval(refreshBalance, 30_000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshBalance();
+    };
+
+    window.addEventListener('focus', refreshBalance);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshBalance);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [refreshBalance]);
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-primary mb-2">Offers & Tasks</h1>
-      <p className="text-secondary mb-8">Complete tasks from our partners to earn credits. (Currently in Mock Mode)</p>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {mockOffers.map((offer) => (
-          <div key={offer.id} className="p-6 bg-surface rounded-lg border border-default flex flex-col">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-bold text-primary">{offer.title}</h3>
-                <p className="text-xs text-muted mt-1">Provided by {offer.provider}</p>
-              </div>
-              <div className="bg-surface-elevated px-3 py-1 rounded-md border border-default">
-                <span className="text-brand font-bold text-sm">+{offer.reward}</span>
-              </div>
-            </div>
-            
-            <p className="text-secondary text-sm flex-1 mb-6">{offer.desc}</p>
-            
+    <div className="mx-auto w-full max-w-7xl pb-10">
+      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">
+            Offerwall.gg
+          </p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-primary sm:text-4xl">
+            Offers &amp; Tasks
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary sm:text-base">
+            Choose an offer, follow every requirement, and your credits will appear after the provider confirms completion.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="rounded-xl border border-default bg-surface px-4 py-2.5">
+            <span className="text-xs text-muted">Balance</span>
+            <span className="ml-2 text-sm font-semibold text-brand">
+              {Number(balance).toFixed(2)} credits
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={refreshBalance}
+            disabled={refreshingBalance}
+            className="rounded-xl border border-default bg-surface px-4 py-2.5 text-sm font-semibold text-secondary transition hover:border-brand/30 hover:text-primary disabled:opacity-50"
+          >
+            {refreshingBalance ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+      </header>
+
+      {session?.mode === 'preview' && (
+        <div className="mb-4 rounded-xl border border-warning/25 bg-warning/5 px-4 py-3 text-sm text-secondary">
+          Preview mode is active. Offers are visible, but clicks remain disabled until the server secret is configured.
+        </div>
+      )}
+
+      <section className="min-h-[720px] overflow-hidden rounded-2xl border border-default bg-surface shadow-[0_24px_80px_rgba(0,0,0,0.2)]">
+        {loading ? (
+          <div className="flex min-h-[720px] items-center justify-center text-sm text-muted">
+            Loading available offers…
+          </div>
+        ) : error ? (
+          <div className="flex min-h-[720px] flex-col items-center justify-center px-6 text-center">
+            <h2 className="text-lg font-semibold text-primary">Offers are unavailable</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-secondary">{error}</p>
             <button
-              onClick={() => handleCompleteOffer(offer.id, offer.reward)}
-              disabled={loading === offer.id}
-              className="w-full py-3 bg-brand text-background font-bold rounded-lg hover:bg-brand-hover transition disabled:opacity-50"
+              type="button"
+              onClick={loadSession}
+              className="mt-5 rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand-hover"
             >
-              {loading === offer.id ? 'Processing...' : 'Start Task'}
+              Try again
             </button>
           </div>
-        ))}
-      </div>
+        ) : session ? (
+          <iframe
+            src={session.url}
+            title="AttentionToken offers"
+            className="block min-h-[800px] w-full border-0 bg-[#0b0d10]"
+            allow="clipboard-write"
+          />
+        ) : null}
+      </section>
+
+      <p className="mt-4 text-xs leading-5 text-muted">
+        Rewards can take time to confirm. Open the offerwall support area if a completed offer does not appear.
+      </p>
     </div>
   );
 }

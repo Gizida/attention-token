@@ -10,6 +10,7 @@ type Transaction = {
   amount: number | string;
   created_at: string;
   sol_amount?: number | string | null;
+  provider?: string | null;
 };
 
 export default function DashboardHome() {
@@ -256,6 +257,14 @@ export default function DashboardHome() {
               {transactions.map((tx, index) => {
                 const isEarn = tx.type === 'earn';
                 const isWithdraw = tx.type === 'withdraw';
+                const amount = Number(tx.amount);
+                const isDebit = isWithdraw || tx.type === 'reversal' || amount < 0;
+                const transactionLabel =
+                  tx.type === 'earn' && tx.provider === 'offerwall.gg'
+                    ? 'Offerwall reward'
+                    : tx.type === 'reversal'
+                      ? 'Offer reversal'
+                      : tx.type.replaceAll('_', ' ');
 
                 return (
                   <div
@@ -266,19 +275,19 @@ export default function DashboardHome() {
                       <div className="flex items-center gap-3">
                         <div
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border text-sm ${
-                            isEarn
+                            isEarn && !isDebit
                               ? 'border-success/15 bg-success/5 text-success'
-                              : isWithdraw
+                              : isDebit
                                 ? 'border-danger/15 bg-danger/5 text-danger'
                                 : 'border-default bg-surface-elevated text-muted'
                           }`}
                         >
-                          {isEarn ? '+' : isWithdraw ? '↗' : '•'}
+                          {isEarn && !isDebit ? '+' : isWithdraw ? '↗' : isDebit ? '−' : '•'}
                         </div>
 
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium capitalize text-primary">
-                            {tx.type}
+                            {transactionLabel}
                           </p>
                           <p className="mt-1 text-xs text-muted">
                             {new Date(tx.created_at).toLocaleString()}
@@ -296,11 +305,11 @@ export default function DashboardHome() {
                     <div className="pl-12 text-left md:pl-0 md:text-right">
                       <p
                         className={`text-sm font-semibold ${
-                          isEarn ? 'text-success' : 'text-danger'
+                          isDebit ? 'text-danger' : 'text-success'
                         }`}
                       >
-                        {isEarn ? '+' : '-'}
-                        {Number(tx.amount).toFixed(2)}
+                        {isDebit ? '-' : '+'}
+                        {Math.abs(amount).toFixed(2)}
                         <span className="ml-1 text-xs font-normal text-muted">
                           credits
                         </span>

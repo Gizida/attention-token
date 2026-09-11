@@ -39,9 +39,6 @@ export function useWalletAuth() {
       }
 
       const data = await response.json();
-        if (data.user && data.user.id) {
-          localStorage.setItem('userId', data.user.id);
-        }
       return data.user;
 
     } catch (error) {
