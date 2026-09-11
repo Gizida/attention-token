@@ -19,14 +19,14 @@ Set the production currency rate deliberately. AttentionToken values 100 credits
 1. Add the placement secret as `OFFERWALL_GG_SECRET_KEY` in the production environment.
 2. Keep `OFFERWALL_GG_PUBLIC_KEY` set to the public key above.
 3. Turn on **Require signature** for the placement.
-4. Add `attentiontoken.com` to the placement's allowed domains before taking real traffic.
+4. Add `attentiontoken.net` to the placement's allowed domains before taking real traffic.
 5. Leave `OFFERWALL_GG_EXPIRING_LINKS=false` unless expiring links are also enabled in Offerwall.gg.
 
 The offers page requests a signed wall URL from `/api/offerwall/session`. The secret never reaches browser code.
 
 ## Postback
 
-- URL: `https://attentiontoken.com/api/offerwall/postback`
+- URL: `https://attentiontoken.net/api/offerwall/postback`
 - Method: `POST`
 - Body type: `application/x-www-form-urlencoded`
 
