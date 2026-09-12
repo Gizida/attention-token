@@ -6,7 +6,7 @@
 2. Configure the server-only variables in `.env.example`; keep `PAYOUTS_ENABLED=false` during deployment.
 3. Upgrade the Vercel project to Pro. `vercel.json` runs the payout processor and reconciler every minute using `CRON_SECRET`.
 4. Restrict the Turnkey API user to the treasury private key, treasury source address, Solana transaction signing, and the System Program. Set its launch transfer ceiling to `ceilTo0.01(110 / SOL_USD)` SOL.
-5. Configure two private mainnet RPC endpoints, CoinGecko, and Resend. Verify cron requests receive HTTP 200.
+5. Configure two private mainnet RPC endpoints, CoinGecko, and at least one operations alert channel: Telegram or Resend. Verify cron requests receive HTTP 200.
 6. Set `PAYOUTS_ENABLED=true` and leave `AUTO_PAYOUTS_ENABLED=false`. Submit and verify a $1 admin-wallet mainnet canary.
 7. After the canary reconciles to `confirmed`, set `AUTO_PAYOUTS_ENABLED=true`.
 

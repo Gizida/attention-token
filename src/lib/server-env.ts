@@ -29,6 +29,23 @@ export function validatePayoutEnvironment(): void {
   }
 }
 
+function validateOperationsAlertEnvironment(): void {
+  const resendValues = [process.env.RESEND_API_KEY, process.env.OPERATIONS_ALERT_EMAIL]
+    .map((value) => Boolean(value?.trim()));
+  const telegramValues = [process.env.TELEGRAM_BOT_TOKEN, process.env.TELEGRAM_CHAT_ID]
+    .map((value) => Boolean(value?.trim()));
+
+  if (resendValues.some(Boolean) && !resendValues.every(Boolean)) {
+    throw new Error('RESEND_API_KEY and OPERATIONS_ALERT_EMAIL must be configured together');
+  }
+  if (telegramValues.some(Boolean) && !telegramValues.every(Boolean)) {
+    throw new Error('TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must be configured together');
+  }
+  if (!resendValues.every(Boolean) && !telegramValues.every(Boolean)) {
+    throw new Error('Configure either Resend or Telegram for operations alerts');
+  }
+}
+
 export function validateProductionEnvironment(): void {
   if (process.env.VERCEL_ENV !== 'production') return;
   [
@@ -46,7 +63,6 @@ export function validateProductionEnvironment(): void {
     'SOLANA_RPC_FALLBACK_URL',
     'CRON_SECRET',
     'COINGECKO_API_KEY',
-    'RESEND_API_KEY',
-    'OPERATIONS_ALERT_EMAIL',
   ].forEach((name) => requireServerEnv(name));
+  validateOperationsAlertEnvironment();
 }
