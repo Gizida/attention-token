@@ -96,7 +96,7 @@ export default function DashboardHome() {
 
             <p className="mt-4 max-w-xl text-sm leading-6 text-white/55">
               Your credits are your current reward balance. Keep earning from
-              offers, then move them through the withdrawal flow when you're ready.
+              offers, then move them through the withdrawal flow when you&apos;re ready.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">

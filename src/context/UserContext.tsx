@@ -2,10 +2,19 @@
 
 import { createContext, useContext } from 'react';
 
+export interface CreditBalances {
+  available: number;
+  pending: number;
+  reserved: number;
+  total: number;
+}
+
 export interface UserData {
   id: number;
   wallet_address: string;
   balance: number;
+  balances: CreditBalances;
+  isAdmin: boolean;
 }
 
 export interface UserContextValue extends UserData {
@@ -14,7 +23,6 @@ export interface UserContextValue extends UserData {
 
 export const UserContext = createContext<UserContextValue | null>(null);
 
-// This is a custom hook that makes it easy to get the user in any component
 export function useUser() {
   const user = useContext(UserContext);
   if (!user) throw new Error('useUser must be used within a UserContext Provider');

@@ -12,7 +12,8 @@ export async function GET() {
     
     // 2. Fetch Most Recent Transaction
     const recentTxRes = await db.query(`
-      SELECT t.sol_amount, u.wallet_address 
+      SELECT t.sol_amount,
+             LEFT(u.wallet_address, 4) || '…' || RIGHT(u.wallet_address, 4) AS wallet_address
       FROM transactions t 
       JOIN users u ON t.user_id = u.id 
       WHERE t.type = 'withdraw' AND t.status = 'completed' AND t.sol_amount IS NOT NULL 

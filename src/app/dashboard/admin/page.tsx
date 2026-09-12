@@ -1,147 +1,84 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+type Stats = { totalUsers: number; totalEntitlements: number; totalEarned: number; totalWithdrawn: number; awaitingReview: number };
+type AdminWithdrawal = {
+  id: string; user_id: string; destination_wallet: string; credits: string; usd_amount: string;
+  sol_lamports: string; status: string; quote_expires_at: string; review_reason?: string;
+  tx_signature?: string; last_error?: string; created_at: string;
+};
 
 export default function AdminPage() {
-  const [stats, setStats] = useState<any>(null);
-  const [error, setError] = useState('');
-  
-  // Treasury logging state
-  const [txType, setTxType] = useState('replenish');
-  const [fromWallet, setFromWallet] = useState('');
-  const [toWallet, setToWallet] = useState('');
-  const [amount, setAmount] = useState('');
-  const [signature, setSignature] = useState('');
-  const [logStatus, setLogStatus] = useState('');
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [withdrawals, setWithdrawals] = useState<AdminWithdrawal[]>([]);
+  const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      const res = await fetch('/api/admin/stats', { cache: 'no-store' });
-      const data = await res.json();
-      if (res.ok) setStats(data);
-      else setError(data.error);
-    };
-    fetchStats();
+  const load = useCallback(async () => {
+    const [statsResponse, withdrawalsResponse] = await Promise.all([
+      fetch('/api/admin/stats', { cache: 'no-store' }),
+      fetch('/api/admin/withdrawals', { cache: 'no-store' }),
+    ]);
+    if (!statsResponse.ok || !withdrawalsResponse.ok) throw new Error('Unable to load admin data');
+    setStats(await statsResponse.json());
+    setWithdrawals((await withdrawalsResponse.json()).withdrawals);
   }, []);
 
-  const handleLogTreasury = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLogStatus('Logging...');
-    try {
-      const res = await fetch('/api/admin/log-treasury', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: txType,
-          fromWallet,
-          toWallet,
-          amountToken: amount,
-          txSignature: signature
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setLogStatus(`Success! Recorded at swap rate of $${data.swapRate}. Fee: ${data.networkFee} SOL.`);
-        setAmount(''); setSignature(''); setFromWallet(''); setToWallet('');
-      } else {
-        setLogStatus(data.error || 'Failed to log.');
-      }
-    } catch (err) {
-      setLogStatus('Network error.');
-    }
-  };
+  useEffect(() => { void load().catch((error) => setMessage(error.message)); }, [load]);
 
-  if (error) return <div className="text-danger text-xl">{error}</div>;
-  if (!stats) return <div className="text-primary">Loading admin data...</div>;
+  async function act(id: string, action: 'approve' | 'reject') {
+    const reason = action === 'reject' ? window.prompt('Why is this request being rejected?') : null;
+    if (action === 'reject' && !reason) return;
+    const response = await fetch(`/api/admin/withdrawals/${id}/${action}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(reason ? { reason } : {}),
+    });
+    const data = await response.json();
+    setMessage(response.ok ? `Request ${action}d.` : data.error || `${action} failed`);
+    if (response.ok) await load();
+  }
 
-  const statCards = [
-    { label: 'Total Users', value: stats.totalusers, color: 'text-info' },
-    { label: 'Total Credit Entitlements', value: `${Number(stats.totalentitlements).toFixed(2)} cr`, color: 'text-brand' },
-    { label: 'Total Earned (All Time)', value: `${Number(stats.totalearned).toFixed(2)} cr`, color: 'text-success' },
-    { label: 'Total Withdrawn (All Time)', value: `${Number(stats.totalwithdrawn).toFixed(2)} cr`, color: 'text-warning' },
-  ];
-
+  if (!stats) return <div className="text-primary">{message || 'Loading admin data…'}</div>;
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-primary mb-8">Admin Overview</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-        {statCards.map((stat, i) => (
-          <div key={i} className="p-6 bg-surface rounded-lg border border-default">
-            <h2 className="text-sm text-muted uppercase tracking-wider mb-2">{stat.label}</h2>
-            <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+    <div className="mx-auto max-w-6xl">
+      <h1 className="text-3xl font-bold text-primary">Admin overview</h1>
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {[
+          ['Users', stats.totalUsers], ['Entitlements', `${stats.totalEntitlements.toFixed(2)} cr`],
+          ['Earned', `${stats.totalEarned.toFixed(2)} cr`], ['Withdrawn', `${stats.totalWithdrawn.toFixed(2)} cr`],
+          ['Awaiting review', stats.awaitingReview],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-2xl border border-default bg-surface p-5">
+            <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
+            <p className="mt-2 text-2xl font-bold text-primary">{value}</p>
           </div>
         ))}
       </div>
-      
-      {/* TREASURY LOGGING FORM */}
-      <div className="p-6 bg-surface rounded-lg border border-default mb-10">
-        <h2 className="text-xl font-bold text-primary mb-4">Log Treasury Movement</h2>
-        <p className="text-xs text-muted mb-6">Record manual replenishments or swaps to keep financial logs accurate. Swap rate is fetched live.</p>
-        
-        <form onSubmit={handleLogTreasury} className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select 
-              value={txType} 
-              onChange={(e) => setTxType(e.target.value)}
-              className="bg-surface-elevated text-primary px-4 py-2 rounded-lg border border-default focus:outline-none focus:border-brand"
-            >
-              <option value="replenish">Replenish (Cold to Hot)</option>
-              <option value="swap_usdc_to_sol">Swap (USDC to SOL)</option>
-            </select>
-
-            <input
-              type="number"
-              step="any"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Amount (in SOL)"
-              required
-              className="bg-surface-elevated text-primary px-4 py-2 rounded-lg border border-default focus:outline-none focus:border-brand"
-            />
-          </div>
-
-          <input
-            type="text"
-            value={fromWallet}
-            onChange={(e) => setFromWallet(e.target.value)}
-            placeholder="From Wallet Address"
-            required
-            className="bg-surface-elevated text-primary px-4 py-2 rounded-lg border border-default focus:outline-none focus:border-brand"
-          />
-          
-          <input
-            type="text"
-            value={toWallet}
-            onChange={(e) => setToWallet(e.target.value)}
-            placeholder="To Wallet Address"
-            required
-            className="bg-surface-elevated text-primary px-4 py-2 rounded-lg border border-default focus:outline-none focus:border-brand"
-          />
-
-          <input
-            type="text"
-            value={signature}
-            onChange={(e) => setSignature(e.target.value)}
-            placeholder="Solana Transaction Signature"
-            required
-            className="bg-surface-elevated text-primary px-4 py-2 rounded-lg border border-default focus:outline-none focus:border-brand"
-          />
-
-          <button
-            type="submit"
-            className="bg-info text-background font-bold py-2 px-4 rounded-lg hover:bg-info/80 transition"
-          >
-            Log Transaction
-          </button>
-        </form>
-
-        {logStatus && (
-          <div className="mt-4 p-4 bg-surface-elevated rounded-lg text-sm text-primary">
-            {logStatus}
-          </div>
-        )}
-      </div>
+      {message && <p className="mt-5 text-sm text-secondary" role="status">{message}</p>}
+      <section className="mt-8 rounded-[28px] border border-default bg-surface p-6">
+        <h2 className="text-xl font-semibold text-primary">Withdrawal queue</h2>
+        <div className="mt-5 space-y-3">
+          {withdrawals.map((item) => (
+            <article key={item.id} className="rounded-xl border border-default bg-surface-elevated p-4">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div>
+                  <p className="font-semibold text-primary">${Number(item.usd_amount).toFixed(2)} · {item.credits} cr · {item.status}</p>
+                  <p className="mt-1 break-all font-mono text-xs text-muted">{item.destination_wallet}</p>
+                  <p className="mt-1 text-xs text-muted">Quote expires {new Date(item.quote_expires_at).toLocaleString()}</p>
+                  {item.last_error && <p className="mt-2 text-sm text-danger">{item.last_error}</p>}
+                </div>
+                {item.status === 'awaiting_review' && (
+                  <div className="flex gap-2">
+                    <button onClick={() => act(item.id, 'approve')} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-background">Approve</button>
+                    <button onClick={() => act(item.id, 'reject')} className="rounded-lg border border-default px-4 py-2 text-sm text-secondary">Reject</button>
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

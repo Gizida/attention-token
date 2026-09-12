@@ -4,10 +4,7 @@ import { useEffect, useState } from 'react';
 
 export function SplashScreen({ onFinished }: { onFinished: () => void }) {
   const [phase, setPhase] = useState<'dark' | 'msg1' | 'msg1_out' | 'msg2' | 'cta' | 'exiting'>('dark');
-  const [stars, setStars] = useState<any[]>([]);
-
-  useEffect(() => {
-    const generatedStars = Array.from({ length: 50 }).map((_, i) => ({
+  const [stars] = useState(() => Array.from({ length: 50 }).map((_, i) => ({
       id: i,
       top: Math.random() * 100,
       left: Math.random() * 100,
@@ -15,9 +12,7 @@ export function SplashScreen({ onFinished }: { onFinished: () => void }) {
       delay: Math.random() * 5,
       duration: Math.random() * 3 + 3,
       drift: Math.random() > 0.6,
-    }));
-    setStars(generatedStars);
-  }, []);
+    })));
 
   // The exact timeline sequence
   useEffect(() => {
@@ -97,7 +92,7 @@ export function SplashScreen({ onFinished }: { onFinished: () => void }) {
             }`}
           >
             <p className="text-base md:text-lg font-light text-white/90 tracking-wide animate-breathe-slow">
-              Shouldn't you be valued for that time?
+              Shouldn&apos;t you be valued for that time?
             </p>
           </div>
 

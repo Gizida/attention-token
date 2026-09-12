@@ -1,7 +1,10 @@
 import { NextRequest } from 'next/server';
 
 import db from '@/lib/db';
+import { insertLedgerEntry } from '@/lib/ledger';
+import { sendOperationsAlert } from '@/lib/operations-alerts';
 import { verifyOfferwallPostbackSignature } from '@/lib/offerwall';
+import { EARNING_MATURITY_DAYS } from '@/lib/withdrawal-policy';
 
 type PostbackSource = Pick<URLSearchParams, 'get'> | Pick<FormData, 'get'>;
 
@@ -13,16 +16,14 @@ function getString(source: PostbackSource, names: string[]) {
   return '';
 }
 
-async function getPostbackSource(request: NextRequest): Promise<PostbackSource> {
-  if (request.method === 'POST') return request.formData();
-  return request.nextUrl.searchParams;
+async function sourceFor(request: NextRequest): Promise<PostbackSource> {
+  return request.method === 'POST' ? request.formData() : request.nextUrl.searchParams;
 }
 
 async function handlePostback(request: NextRequest) {
   let source: PostbackSource;
-
   try {
-    source = await getPostbackSource(request);
+    source = await sourceFor(request);
   } catch {
     return new Response('INVALID BODY', { status: 400 });
   }
@@ -38,208 +39,173 @@ async function handlePostback(request: NextRequest) {
   const goalId = getString(source, ['goalId', 'goal_id']);
   const payoutUsd = getString(source, ['payoutUsd', 'payout_usd']);
 
-  if (!userId || !transactionId || !currencyAmount || !signature) {
-    return new Response('MISSING FIELDS', { status: 400 });
-  }
-
+  if (!userId || !transactionId || !currencyAmount || !signature) return new Response('MISSING FIELDS', { status: 400 });
   if (!verifyOfferwallPostbackSignature(userId, transactionId, currencyAmount, signature)) {
     return new Response('FORBIDDEN', { status: 403 });
   }
-
-  // Offerwall.gg's dashboard test uses a valid signature but must never alter a balance.
   if (test === '1') return new Response('OK');
 
   const numericUserId = Number(userId);
   const numericAmount = Number(currencyAmount);
   const numericPayoutUsd = payoutUsd ? Number(payoutUsd) : null;
-
   if (
-    !Number.isSafeInteger(numericUserId) ||
-    numericUserId <= 0 ||
-    !/^-?(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(currencyAmount) ||
-    !Number.isFinite(numericAmount) ||
-    numericAmount === 0 ||
-    transactionId.length > 255 ||
-    !['credited', 'reversed'].includes(status) ||
-    (status === 'credited' && numericAmount < 0) ||
-    (status === 'reversed' && numericAmount > 0) ||
-    (numericPayoutUsd !== null && !Number.isFinite(numericPayoutUsd))
-  ) {
-    return new Response('INVALID FIELDS', { status: 400 });
-  }
+    !Number.isSafeInteger(numericUserId) || numericUserId <= 0
+    || !/^-?(?:0|[1-9]\d*)(?:\.\d{1,8})?$/.test(currencyAmount)
+    || !Number.isFinite(numericAmount) || numericAmount === 0
+    || transactionId.length > 255 || !['credited', 'reversed'].includes(status)
+    || (status === 'credited' && numericAmount < 0) || (status === 'reversed' && numericAmount > 0)
+    || (numericPayoutUsd !== null && !Number.isFinite(numericPayoutUsd))
+  ) return new Response('INVALID FIELDS', { status: 400 });
 
   const client = await db.getClient();
-
+  let reversalCountLastHour = 0;
   try {
     await client.query('BEGIN');
-
-    const userResult = await client.query(
-      'SELECT id, referred_by FROM users WHERE id = $1 FOR UPDATE',
-      [numericUserId],
-    );
-
-    if (userResult.rows.length === 0) {
+    const userResult = await client.query('SELECT id,referred_by FROM users WHERE id=$1 FOR UPDATE', [numericUserId]);
+    if (!userResult.rows[0]) {
       await client.query('ROLLBACK');
       return new Response('USER NOT FOUND', { status: 404 });
     }
-
-    const referredBy = userResult.rows[0].referred_by as number | null;
+    const referredBy = userResult.rows[0].referred_by ? Number(userResult.rows[0].referred_by) : null;
     let referralCommission = 0;
     let reversesTransactionId: string | null = null;
+    let conversionKey = transactionId;
 
     if (status === 'credited' && referredBy) {
-      await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [referredBy]);
-
-      const capResult = await client.query(
-        `SELECT COALESCE(SUM(amount), 0) AS total_earned
-         FROM transactions
-         WHERE user_id = $1
-           AND type = 'referral_payout'
-           AND offer_id = $2`,
+      await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [referredBy]);
+      const cap = await client.query(
+        `SELECT COALESCE(SUM(amount),0) AS earned FROM transactions
+         WHERE user_id=$1 AND type='referral_payout' AND offer_id=$2`,
         [referredBy, String(numericUserId)],
       );
-
-      const remainingCap = Math.max(500 - Number(capResult.rows[0].total_earned), 0);
-      referralCommission = Math.min(numericAmount * 0.05, remainingCap);
+      referralCommission = Math.min(numericAmount * 0.05, Math.max(500 - Number(cap.rows[0].earned), 0));
     }
 
     if (status === 'reversed') {
-      const originalResult = await client.query(
-        `SELECT provider_transaction_id, referral_commission
-         FROM offerwall_conversions original
-         WHERE original.user_id = $1
-           AND original.status = 'credited'
-           AND original.credits = ABS($2::numeric)
-           AND COALESCE(original.offer_id, '') = $3
-           AND COALESCE(original.goal_id, '') = $4
-           AND NOT EXISTS (
-             SELECT 1
-             FROM offerwall_conversions reversal
-             WHERE reversal.reverses_transaction_id = original.provider_transaction_id
-           )
-         ORDER BY original.created_at DESC
-         LIMIT 1
-         FOR UPDATE`,
-        [numericUserId, currencyAmount, offerId, goalId],
+      const sameId = await client.query(
+        `SELECT provider_transaction_id,referral_commission FROM offerwall_conversions
+         WHERE provider_transaction_id=$1 AND user_id=$2 AND status='credited' FOR UPDATE`,
+        [transactionId, numericUserId],
       );
-
-      if (originalResult.rows.length > 0) {
-        reversesTransactionId = originalResult.rows[0].provider_transaction_id;
-        referralCommission = Number(originalResult.rows[0].referral_commission);
-
-        if (referredBy && referralCommission > 0) {
-          await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [referredBy]);
-        }
+      let original = sameId.rows[0];
+      if (original) {
+        conversionKey = `${transactionId}:reversal`;
+      } else {
+        const match = await client.query(
+          `SELECT provider_transaction_id,referral_commission FROM offerwall_conversions original
+           WHERE user_id=$1 AND status='credited' AND credits=ABS($2::numeric)
+             AND COALESCE(offer_id,'')=$3 AND COALESCE(goal_id,'')=$4
+             AND NOT EXISTS (SELECT 1 FROM offerwall_conversions reversal
+               WHERE reversal.reverses_transaction_id=original.provider_transaction_id)
+           ORDER BY created_at DESC LIMIT 1 FOR UPDATE`,
+          [numericUserId, currencyAmount, offerId, goalId],
+        );
+        original = match.rows[0];
       }
+      if (!original) {
+        await client.query('ROLLBACK');
+        return new Response('ORIGINAL NOT FOUND', { status: 409 });
+      }
+      reversesTransactionId = original.provider_transaction_id;
+      referralCommission = Number(original.referral_commission);
+      if (referredBy && referralCommission > 0) await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [referredBy]);
     }
 
-    const conversionResult = await client.query(
-      `INSERT INTO offerwall_conversions (
-         provider_transaction_id,
-         user_id,
-         offer_id,
-         offer_name,
-         goal_id,
-         credits,
-         payout_usd,
-         status,
-         referral_commission,
-         reverses_transaction_id
-       )
-       VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), $6, $7, $8, $9, $10)
-       ON CONFLICT DO NOTHING
-       RETURNING provider_transaction_id`,
-      [
-        transactionId,
-        numericUserId,
-        offerId,
-        offerName,
-        goalId,
-        currencyAmount,
-        numericPayoutUsd,
-        status,
-        referralCommission,
-        reversesTransactionId,
-      ],
+    const conversion = await client.query(
+      `INSERT INTO offerwall_conversions
+         (provider_transaction_id,user_id,offer_id,offer_name,goal_id,credits,payout_usd,
+          status,referral_commission,reverses_transaction_id)
+       VALUES ($1,$2,NULLIF($3,''),NULLIF($4,''),NULLIF($5,''),$6,$7,$8,$9,$10)
+       ON CONFLICT DO NOTHING RETURNING provider_transaction_id`,
+      [conversionKey, numericUserId, offerId, offerName, goalId, currencyAmount,
+        numericPayoutUsd, status, referralCommission, reversesTransactionId],
     );
-
-    if (conversionResult.rows.length === 0) {
+    if (!conversion.rows[0]) {
       await client.query('COMMIT');
       return new Response('OK');
     }
 
-    await client.query('UPDATE users SET balance = balance + $1 WHERE id = $2', [
-      currencyAmount,
-      numericUserId,
-    ]);
+    if (status === 'reversed') {
+      const reversalCount = await client.query(
+        `SELECT COUNT(*) AS count FROM offerwall_conversions
+         WHERE status='reversed' AND created_at >= NOW()-INTERVAL '1 hour'`,
+      );
+      reversalCountLastHour = Number(reversalCount.rows[0]?.count ?? 0);
+    }
 
+    const maturity = new Date(Date.now() + EARNING_MATURITY_DAYS * 24 * 60 * 60 * 1_000);
+    let userAvailableAt = maturity;
+    if (status === 'reversed' && reversesTransactionId) {
+      const originalLedger = await client.query(
+        `SELECT available_at FROM credit_ledger_entries
+         WHERE user_id=$1 AND kind='offer_credit' AND source_id=$2`,
+        [numericUserId, reversesTransactionId],
+      );
+      userAvailableAt = originalLedger.rows[0]?.available_at && new Date(originalLedger.rows[0].available_at) > new Date()
+        ? new Date(originalLedger.rows[0].available_at) : new Date();
+    }
+    await insertLedgerEntry(client, {
+      userId: numericUserId,
+      kind: status === 'credited' ? 'offer_credit' : 'offer_reversal',
+      amountCredits: numericAmount,
+      availableAt: userAvailableAt,
+      sourceType: 'offerwall.gg',
+      sourceId: conversionKey,
+      metadata: { offerId, offerName, goalId, reversesTransactionId },
+    });
+    await client.query('UPDATE users SET balance=COALESCE(balance,0)+$1 WHERE id=$2', [numericAmount, numericUserId]);
     await client.query(
-      `INSERT INTO transactions (user_id, type, amount, provider, offer_id, status)
-       VALUES ($1, $2, $3, 'offerwall.gg', $4, 'completed')`,
-      [
-        numericUserId,
-        status === 'credited' ? 'earn' : 'reversal',
-        Math.abs(numericAmount),
-        transactionId,
-      ],
+      `INSERT INTO transactions (user_id,type,amount,provider,offer_id,status,available_at)
+       VALUES ($1,$2,$3,'offerwall.gg',$4,'completed',$5)`,
+      [numericUserId, status === 'credited' ? 'earn' : 'reversal', Math.abs(numericAmount), conversionKey, userAvailableAt],
     );
 
     if (referredBy && referralCommission > 0) {
-      if (status === 'credited') {
-        await client.query(
-          `UPDATE users
-           SET pending_referral_balance = pending_referral_balance + $1
-           WHERE id = $2`,
-          [referralCommission, referredBy],
+      let referralAvailableAt = maturity;
+      if (status === 'reversed' && reversesTransactionId) {
+        const originalReferral = await client.query(
+          `SELECT available_at FROM credit_ledger_entries
+           WHERE user_id=$1 AND kind='referral_credit' AND source_id=$2`,
+          [referredBy, reversesTransactionId],
         );
-      } else {
-        const referrerResult = await client.query(
-          'SELECT balance, pending_referral_balance FROM users WHERE id = $1',
-          [referredBy],
-        );
-        const pendingBalance = Math.max(
-          Number(referrerResult.rows[0]?.pending_referral_balance ?? 0),
-          0,
-        );
-        const pendingDeduction = Math.min(pendingBalance, referralCommission);
-        const balanceDeduction = referralCommission - pendingDeduction;
-
-        await client.query(
-          `UPDATE users
-           SET pending_referral_balance = pending_referral_balance - $1,
-               balance = balance - $2
-           WHERE id = $3`,
-          [pendingDeduction, balanceDeduction, referredBy],
-        );
+        referralAvailableAt = originalReferral.rows[0]?.available_at && new Date(originalReferral.rows[0].available_at) > new Date()
+          ? new Date(originalReferral.rows[0].available_at) : new Date();
       }
-
+      const signedCommission = status === 'credited' ? referralCommission : -referralCommission;
+      await insertLedgerEntry(client, {
+        userId: referredBy,
+        kind: status === 'credited' ? 'referral_credit' : 'referral_reversal',
+        amountCredits: signedCommission,
+        availableAt: referralAvailableAt,
+        sourceType: 'offerwall.gg-referral',
+        sourceId: conversionKey,
+        metadata: { referredUserId: numericUserId, reversesTransactionId },
+      });
+      await client.query('UPDATE users SET balance=COALESCE(balance,0)+$1 WHERE id=$2', [signedCommission, referredBy]);
       await client.query(
-        `INSERT INTO transactions (user_id, type, amount, provider, offer_id, status)
-         VALUES ($1, 'referral_payout', $2, $3, $4, 'completed')`,
-        [
-          referredBy,
-          status === 'credited' ? referralCommission : -referralCommission,
-          status === 'credited' ? 'referral' : 'referral_reversal',
-          String(numericUserId),
-        ],
+        `INSERT INTO transactions (user_id,type,amount,provider,offer_id,status,available_at)
+         VALUES ($1,'referral_payout',$2,$3,$4,'completed',$5)`,
+        [referredBy, signedCommission, status === 'credited' ? 'referral' : 'referral_reversal', String(numericUserId), referralAvailableAt],
       );
     }
 
     await client.query('COMMIT');
+    const reversalThreshold = Math.max(Number(process.env.REVERSAL_SPIKE_THRESHOLD ?? 5), 1);
+    if (status === 'reversed' && reversalCountLastHour > 0 && reversalCountLastHour % reversalThreshold === 0) {
+      void sendOperationsAlert(
+        'Offerwall reversal spike',
+        `${reversalCountLastHour} Offerwall reversals were recorded in the last hour.`,
+      ).catch(console.error);
+    }
     return new Response('OK');
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Offerwall postback error:', error);
+    console.error('Offerwall postback error', error);
     return new Response('RETRY', { status: 500 });
   } finally {
     client.release();
   }
 }
 
-export async function POST(request: NextRequest) {
-  return handlePostback(request);
-}
-
-export async function GET(request: NextRequest) {
-  return handlePostback(request);
-}
+export async function POST(request: NextRequest) { return handlePostback(request); }
+export async function GET(request: NextRequest) { return handlePostback(request); }

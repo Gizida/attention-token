@@ -29,6 +29,30 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
+function WalletCTA({
+  mounted,
+  variant = "page",
+  fullWidth = false,
+}: {
+  mounted: boolean;
+  variant?: "page" | "header";
+  fullWidth?: boolean;
+}) {
+  const wrapperClass = variant === "header"
+    ? "wallet-cta-header w-fit"
+    : `wallet-cta-page ${fullWidth ? "w-full" : "w-fit"}`;
+  return (
+    <div className={wrapperClass}>
+      {mounted ? <WalletMultiButton /> : (
+        <div className={[
+          "animate-pulse rounded-xl bg-surface-elevated",
+          variant === "header" ? "h-9 w-28" : fullWidth ? "h-14 w-full" : "h-14 w-48",
+        ].join(" ")} />
+      )}
+    </div>
+  );
+}
+
 export function LandingContent() {
   const { connected, publicKey } = useWallet();
   const { authenticate } = useWalletAuth();
@@ -48,7 +72,7 @@ export function LandingContent() {
           const data = await res.json();
           setStats(data);
         }
-      } catch (error) {
+      } catch {
         console.error('Failed to fetch public stats');
       }
     };
@@ -95,40 +119,6 @@ export function LandingContent() {
     }
   }, [connected, publicKey, authenticate, router]);
 
-  // The wallet adapter emits the same trigger class everywhere.
-  // These wrappers let globals.css give the header and page CTAs different treatments.
-  const WalletCTA = ({
-    variant = "page",
-    fullWidth = false,
-  }: {
-    variant?: "page" | "header";
-    fullWidth?: boolean;
-  }) => {
-    const wrapperClass =
-      variant === "header"
-        ? "wallet-cta-header w-fit"
-        : `wallet-cta-page ${fullWidth ? "w-full" : "w-fit"}`;
-
-    return (
-      <div className={wrapperClass}>
-        {mounted ? (
-          <WalletMultiButton />
-        ) : (
-          <div
-            className={[
-              "animate-pulse rounded-xl bg-surface-elevated",
-              variant === "header"
-                ? "h-9 w-28"
-                : fullWidth
-                  ? "h-14 w-full"
-                  : "h-14 w-48",
-            ].join(" ")}
-          />
-        )}
-      </div>
-    );
-  };
-
     return (
     // Removed overflow-x-hidden from here so it doesn't break the fixed header
     <div className="landing-shell min-h-screen bg-background text-primary">
@@ -151,13 +141,12 @@ export function LandingContent() {
             </h1>
 
             <p className="mt-7 max-w-xl text-base leading-7 text-secondary sm:text-lg">
-              Complete offers, answer surveys, watch sponsored content, and
-              turn your attention into credits you can redeem for SOL or the
-              AttentionToken ecosystem.
+              Complete verified offers from our offerwall partner and
+              turn your attention into credits you can withdraw as SOL.
             </p>
 
             <div className="mt-11 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <WalletCTA variant="page" />
+              <WalletCTA mounted={mounted} variant="page" />
               <a
                 href="#how-it-works"
                 className="inline-flex h-12 items-center rounded-xl border border-transparent px-5 text-sm font-semibold text-secondary transition hover:bg-white/[0.08] hover:text-primary"
@@ -218,9 +207,9 @@ export function LandingContent() {
         <section className="border-y border-white/[0.05] bg-white/[0.015]">
           <div className="mx-auto grid max-w-7xl grid-cols-1 divide-y divide-white/[0.06] px-5 sm:px-8 md:grid-cols-3 md:divide-x md:divide-y-0">
             {[
-              ["01", "Complete", "Choose from surveys, offers, videos, and other tasks."],
+              ["01", "Complete", "Choose an available offer from Offerwall.GG."],
               ["02", "Earn", "Your completed activity is converted into platform credits."],
-              ["03", "Redeem", "Use your balance toward SOL or ecosystem rewards."],
+              ["03", "Withdraw", "Withdraw your available credits as SOL."],
             ].map(([number, title, description]) => (
               <div key={number} className="px-0 py-9 md:px-8 md:py-10">
                 <div className="flex items-start gap-4">
@@ -246,7 +235,7 @@ export function LandingContent() {
             </h2>
             <p className="mt-7 text-base leading-7 text-secondary">
               No complicated account setup. Your Solana wallet is the gateway
-              to your account, activity, and eventual withdrawals.
+              to your account, activity, and withdrawals.
             </p>
           </div>
 
@@ -264,7 +253,7 @@ export function LandingContent() {
               },
               {
                 title: "Turn credits into value",
-                text: "Build your balance and redeem it for SOL or the platform's token ecosystem.",
+                text: "Build your available balance and withdraw it as SOL.",
                 icon: "03",
               },
             ].map((step) => (
@@ -306,32 +295,29 @@ export function LandingContent() {
                 <div className="rounded-xl border border-brand/20 bg-brand/[0.06] px-4 py-3 font-semibold text-brand">
                   SOL
                 </div>
-                <div className="rounded-xl border border-white/[0.07] bg-surface px-4 py-3 font-semibold">
-                  Token
-                </div>
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 {
-                  title: "Surveys",
-                  text: "Share opinions and complete research tasks in exchange for rewards.",
-                  tag: "Quick tasks",
+                  title: "Offerwall.GG",
+                  text: "Choose from verified offers available to your account and region.",
+                  tag: "Live",
                 },
                 {
-                  title: "Offerwalls",
-                  text: "Explore sponsored offers and longer-form opportunities when they make sense.",
-                  tag: "Higher value",
+                  title: "Tracked rewards",
+                  text: "Signed provider callbacks create a transparent credit history.",
+                  tag: "Verified",
                 },
                 {
-                  title: "Sponsored video",
-                  text: "Watch eligible content and earn from attention that would otherwise go uncompensated.",
-                  tag: "Passive",
+                  title: "Seven-day maturity",
+                  text: "New earnings mature before they become available for withdrawal.",
+                  tag: "Protected",
                 },
                 {
-                  title: "Platform rewards",
-                  text: "Use your credits toward SOL or future ecosystem-native rewards.",
+                  title: "SOL payouts",
+                  text: "Redeem available credits to the Solana wallet used to sign in.",
                   tag: "On-chain",
                 },
               ].map((item) => (
@@ -381,7 +367,7 @@ export function LandingContent() {
                 {
                   number: "02",
                   title: "Flexible",
-                  text: "Pick your favorite from a variety of tasks, surveys, offers, and other ways to put your attention to work.",
+                  text: "Pick an available Offerwall.GG offer and review its requirements before starting.",
                 },
                 {
                   number: "03",
@@ -433,7 +419,7 @@ export function LandingContent() {
                 reward can start with a few minutes.
               </p>
               <div className="mx-auto mt-8 max-w-xs">
-                <WalletCTA variant="page" fullWidth />
+                <WalletCTA mounted={mounted} variant="page" fullWidth />
               </div>
               <p className="mt-4 text-xs text-muted">
                 No password required. Sign with your wallet to continue.

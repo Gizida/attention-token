@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useUser } from '@/context/UserContext';
 
 type AffiliateData = {
   total_referrals: number;
@@ -11,12 +10,10 @@ type AffiliateData = {
 };
 
 export default function AffiliatesPage() {
-  const user = useUser();
   const [data, setData] = useState<AffiliateData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [claimStatus, setClaimStatus] = useState('');
+  const [copyError, setCopyError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [claiming, setClaiming] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -45,43 +42,18 @@ export default function AffiliatesPage() {
   const pendingBalance = Number(data?.pending_referral_balance ?? 0);
   const lifetimeEarnings = Number(data?.total_earned_all_time ?? 0);
   const totalReferrals = Number(data?.total_referrals ?? 0);
-  const canClaim = pendingBalance > 0;
-
-  const handleClaim = async () => {
-    if (!canClaim || claiming) return;
-
-    setClaiming(true);
-    setClaimStatus('');
-
-    try {
-      const res = await fetch('/api/affiliates', { method: 'POST' });
-      const json = await res.json();
-
-      if (res.ok) {
-        setClaimStatus(`Successfully claimed ${json.claimedAmount} credits.`);
-        await fetchData();
-        window.location.reload();
-      } else {
-        setClaimStatus(json.error || 'Failed to claim.');
-      }
-    } catch (err) {
-      console.error(err);
-      setClaimStatus('Network error.');
-    } finally {
-      setClaiming(false);
-    }
-  };
 
   const copyLink = async () => {
     if (!referralLink) return;
 
     try {
       await navigator.clipboard.writeText(referralLink);
+      setCopyError('');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error(err);
-      setClaimStatus('Unable to copy the referral link.');
+      setCopyError('Unable to copy the referral link.');
     }
   };
 
@@ -223,7 +195,7 @@ export default function AffiliatesPage() {
             <div>
               <p className="text-sm font-medium text-primary">5% share</p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                Earn from referred users' completed activity.
+                Earn from referred users&apos; completed activity.
               </p>
             </div>
             <div>
@@ -233,49 +205,45 @@ export default function AffiliatesPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-primary">Simple settlement</p>
+              <p className="text-sm font-medium text-primary">Automatic settlement</p>
               <p className="mt-1 text-xs leading-5 text-muted">
-                Claim your pending commissions into your balance.
+                Commissions become available after seven days.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Claim panel */}
+        {/* Maturity panel */}
         <div className="relative overflow-hidden rounded-2xl border border-default bg-surface p-7 md:p-8">
           <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-brand/5 blur-3xl" />
 
           <div className="relative">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Pending commissions
+              Maturing commissions
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-primary">
-              Ready when you are.
+              Available automatically.
             </h2>
             <p className="mt-3 text-sm leading-6 text-secondary">
-              Move your accumulated referral rewards into your main AttentionToken
-              balance.
+              Referral rewards share the same seven-day availability period as
+              the qualifying Offerwall earnings.
             </p>
 
             <div className="mt-10">
               <p className="text-4xl font-semibold tracking-tight text-brand">
                 {pendingBalance.toFixed(2)}
               </p>
-              <p className="mt-1 text-sm text-muted">credits available</p>
+              <p className="mt-1 text-sm text-muted">credits pending maturity</p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleClaim}
-              disabled={!canClaim || claiming}
-              className="mt-8 w-full rounded-xl bg-brand px-5 py-3.5 text-sm font-semibold text-background transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {claiming ? 'Processing…' : 'Claim balance'}
-            </button>
+            <div className="mt-8 rounded-xl border border-brand/20 bg-brand/5 px-5 py-4 text-sm leading-6 text-secondary">
+              No claim action is required. Mature rewards move into your available
+              balance automatically.
+            </div>
 
-            {claimStatus && (
+            {copyError && (
               <div className="mt-4 rounded-lg border border-default bg-surface-elevated px-4 py-3 text-sm text-secondary">
-                {claimStatus}
+                {copyError}
               </div>
             )}
           </div>
@@ -294,7 +262,7 @@ export default function AffiliatesPage() {
             </h2>
             <p className="mt-4 max-w-sm text-sm leading-6 text-secondary">
               Your link handles attribution. The platform tracks the qualifying
-              earnings, and the resulting commission waits here until you claim it.
+              earnings, and the resulting commission becomes available after seven days.
             </p>
           </div>
 
@@ -336,7 +304,7 @@ export default function AffiliatesPage() {
       </section>
 
       <p className="mt-6 text-center text-xs leading-5 text-muted">
-        Referral earnings are credited to your account and can be claimed when available.
+        Referral earnings mature automatically and may be reversed when the underlying offer is reversed.
       </p>
     </div>
   );

@@ -11,7 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "AttentionToken — Earn From Your Attention",
   description:
-    "Complete tasks, answer surveys, watch content, and turn your attention into on-chain rewards.",
+    "Complete verified partner offers and turn your attention into on-chain SOL rewards.",
 };
 
 export default function RootLayout({

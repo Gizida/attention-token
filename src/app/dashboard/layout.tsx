@@ -15,7 +15,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const { connected } = useWallet();
-  const isAdmin = user?.wallet_address === process.env.NEXT_PUBLIC_ADMIN_WALLET_ADDRESS;
+  const isAdmin = Boolean(user?.isAdmin);
 
   const refreshUser = useCallback(async () => {
     const res = await fetch('/api/auth/verify', { cache: 'no-store' });
@@ -46,7 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const checkAuth = async () => {
       try {
         await refreshUser();
-      } catch (error) {
+      } catch {
         router.push('/');
       } finally {
         setLoading(false);
@@ -69,6 +69,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const userData: UserContextValue = {
     ...user,
     balance: Number(user.balance),
+    balances: {
+      available: Number(user.balances?.available ?? user.balance),
+      pending: Number(user.balances?.pending ?? 0),
+      reserved: Number(user.balances?.reserved ?? 0),
+      total: Number(user.balances?.total ?? user.balance),
+    },
     refreshUser,
   };
 
@@ -124,10 +130,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* BALANCE IN THE CORNER */}
           <div className="mt-auto pt-6 border-t border-default">
             <div className="px-4 py-3 bg-surface-elevated rounded-lg">
-              <p className="text-xs text-muted uppercase tracking-wider mb-1">Balance</p>
+              <p className="text-xs text-muted uppercase tracking-wider mb-1">Available</p>
               <p className="text-2xl font-bold text-brand">
                 {Number(user.balance).toFixed(2)} <span className="text-sm text-secondary font-normal">credits</span>
               </p>
+              {(userData.balances.pending > 0 || userData.balances.reserved > 0) && (
+                <p className="mt-1 text-xs text-muted">
+                  {userData.balances.pending.toFixed(2)} pending · {userData.balances.reserved.toFixed(2)} reserved
+                </p>
+              )}
             </div>
           </div>
         </aside>

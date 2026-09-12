@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 export function Ticker() {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Array<{ wallet_address: string; sol_amount: string | number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +14,7 @@ export function Ticker() {
           const data = await res.json();
           setItems(data.ticker);
         }
-      } catch (error) {
+      } catch {
         console.error('Failed to fetch ticker data');
       } finally {
         setLoading(false);

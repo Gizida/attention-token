@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useUser } from '@/context/UserContext';
 
 type Leader = {
   wallet_address: string;
   total_earned: number | string;
+  is_current_user: boolean;
 };
 
 const formatNumber = (value: number | string) =>
@@ -14,7 +14,6 @@ const formatNumber = (value: number | string) =>
   });
 
 export default function LeaderboardPage() {
-  const user = useUser();
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,10 +35,6 @@ export default function LeaderboardPage() {
 
     fetchLeaderboard();
   }, []);
-
-  const truncateAddress = (addr: string) => {
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
-  };
 
   const topThree = leaders.slice(0, 3);
   const remainingLeaders = leaders.slice(3);
@@ -140,7 +135,7 @@ export default function LeaderboardPage() {
         {topThree.map((leader, index) => {
           const rank = index + 1 as 1 | 2 | 3;
           const theme = podium[rank];
-          const isCurrentUser = leader.wallet_address === user.wallet_address;
+          const isCurrentUser = leader.is_current_user;
 
           return (
             <article
@@ -203,7 +198,7 @@ export default function LeaderboardPage() {
 
                 <div className="mt-10">
                   <p className="font-mono text-sm tracking-tight" style={{ color: theme.text }}>
-                    {truncateAddress(leader.wallet_address)}
+                    {leader.wallet_address}
                   </p>
                   {isCurrentUser && (
                     <p
@@ -259,7 +254,7 @@ export default function LeaderboardPage() {
           <div className="divide-y divide-default">
             {remainingLeaders.map((leader, index) => {
               const rank = index + 4;
-              const isCurrentUser = leader.wallet_address === user.wallet_address;
+              const isCurrentUser = leader.is_current_user;
 
               return (
                 <div
@@ -278,7 +273,7 @@ export default function LeaderboardPage() {
 
                   <div className="col-span-6 md:col-span-7">
                     <div className="font-mono text-sm text-primary">
-                      {truncateAddress(leader.wallet_address)}
+                      {leader.wallet_address}
                       {isCurrentUser && (
                         <span className="ml-2 text-xs font-semibold text-brand">
                           You
