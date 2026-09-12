@@ -84,6 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/leaderboard', label: 'Leaderboard' },
     { href: '/dashboard/affiliates', label: 'Affiliates' },
     { href: '/dashboard/withdraw', label: 'Withdraw' },
+    { href: '/dashboard/support', label: 'Support' },
     ...(isAdmin ? [{ href: '/dashboard/admin', label: 'Admin Panel' }] : []),
   ];
 

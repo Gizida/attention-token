@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useUser } from '@/context/UserContext';
+import { WithdrawalStepUpButton } from '@/components/WithdrawalStepUpButton';
 
 type Withdrawal = {
   id: string;
@@ -15,6 +16,8 @@ type Withdrawal = {
   reviewReason: string | null;
   statusMessage: string | null;
   createdAt: string;
+  requiresStepUp: boolean;
+  stepUpVerified: boolean;
 };
 
 const statusLabels: Record<string, string> = {
@@ -147,6 +150,12 @@ export default function WithdrawPage() {
                     {statusLabels[withdrawal.status] || withdrawal.status}
                   </span>
                 </div>
+                {withdrawal.status === 'awaiting_review' && withdrawal.requiresStepUp && !withdrawal.stepUpVerified && (
+                  <WithdrawalStepUpButton withdrawalId={withdrawal.id} onVerified={loadWithdrawals} />
+                )}
+                {withdrawal.status === 'awaiting_review' && withdrawal.requiresStepUp && withdrawal.stepUpVerified && (
+                  <p className="mt-3 text-sm text-success">Wallet verified. Waiting for administrator review.</p>
+                )}
                 {withdrawal.reviewReason && <p className="mt-3 text-sm text-secondary">{withdrawal.reviewReason}</p>}
                 {!withdrawal.reviewReason && withdrawal.statusMessage && (
                   <p className="mt-3 text-sm leading-6 text-secondary">{withdrawal.statusMessage}</p>

@@ -1,13 +1,10 @@
 "use client";
 
 import { CookieConsent } from './CookieConsent';
-import { useEffect, useRef, useState } from "react";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useEffect, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { useWalletAuth } from "@/hooks/useWalletAuth";
-import { useRouter } from "next/navigation";
-import { createPortal } from "react-dom";
 import { BackgroundBeams } from "./BackgroundBeams";
+import { BetaAccessGate } from "./BetaAccessGate";
 
 function LogoMark() {
   return (
@@ -54,9 +51,6 @@ function WalletCTA({
 }
 
 export function LandingContent() {
-  const { connected, publicKey } = useWallet();
-  const { authenticate } = useWalletAuth();
-  const router = useRouter();
   const [stats, setStats] = useState<{ totalSol: string; recentWallet: string | null; recentAmount: string | null }>({
     totalSol: "0.0000",
     recentWallet: null,
@@ -79,49 +73,17 @@ export function LandingContent() {
     fetchStats();
   }, []);
   const [mounted, setMounted] = useState(false);
-  const [status, setStatus] = useState("");
-  const hasAttemptedAuth = useRef(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (connected && publicKey && !hasAttemptedAuth.current) {
-      hasAttemptedAuth.current = true;
 
-      const handleAuth = async () => {
-        try {
-          setStatus("Please sign the message in your wallet...");
-
-          const urlParams = new URLSearchParams(window.location.search);
-          const urlRef = urlParams.get('ref');
-
-          if (urlRef) {
-            localStorage.setItem('refCode', urlRef);
-          }
-
-          const localRef = localStorage.getItem('refCode');
-          const refCode: string | undefined = (urlRef || localRef || undefined) as string | undefined;
-
-          await authenticate(refCode);
-
-          setStatus("Success! Redirecting to offers...");
-          router.push("/dashboard/offers");
-        } catch (err) {
-          setStatus("Authentication failed or rejected. Please try again.");
-          hasAttemptedAuth.current = false;
-          console.error(err);
-        }
-      };
-
-      handleAuth();
-    }
-  }, [connected, publicKey, authenticate, router]);
 
     return (
     // Removed overflow-x-hidden from here so it doesn't break the fixed header
     <div className="landing-shell min-h-screen bg-background text-primary">
+      <BetaAccessGate />
       <div className="pointer-events-none fixed inset-0 -z-10 site-grid opacity-70" />
       
             {/* Hero */}
@@ -505,21 +467,6 @@ export function LandingContent() {
       {/* Cookie Consent Bar */}
       <CookieConsent />
 
-      {/* 
-        TOAST PORTAL: 
-        Using createPortal to teleport the toast to the <body> tag.
-        This escapes the CSS transform on the parent wrapper, making fixed positioning work properly!
-      */}
-      {typeof document !== "undefined" && status && createPortal(
-        <div 
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-3 rounded-lg shadow-lg z-[9999]" 
-          style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-default)' }}
-        >
-          <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
-          <p className="text-sm text-primary">{status}</p>
-        </div>,
-        document.body
-      )}
     </div>
   );
 }

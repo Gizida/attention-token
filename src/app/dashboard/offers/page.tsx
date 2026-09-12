@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { useUser } from '@/context/UserContext';
+import { OfferActivity } from '@/components/OfferActivity';
 
 type OfferwallSession = {
   mode: 'live' | 'preview';
@@ -129,6 +130,8 @@ export default function OffersPage() {
           />
         ) : null}
       </section>
+
+      <OfferActivity />
 
       <p className="mt-4 text-xs leading-5 text-muted">
         Rewards can take time to confirm. Open the offerwall support area if a completed offer does not appear.

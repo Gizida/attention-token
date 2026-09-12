@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { BetaInvites } from '@/components/BetaInvites';
 
 type AffiliateData = {
   total_referrals: number;
@@ -249,6 +250,8 @@ export default function AffiliatesPage() {
           </div>
         </div>
       </section>
+
+      <BetaInvites referralCode={data.referral_code} />
 
       {/* How it works */}
       <section className="mt-14 rounded-2xl border border-default bg-surface p-7 md:p-8">

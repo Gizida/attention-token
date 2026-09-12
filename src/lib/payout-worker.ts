@@ -197,8 +197,9 @@ async function markConfirmed(attempt: AttemptRecord, networkFeeLamports = 0n): P
     await client.query("UPDATE payout_attempts SET status='confirmed', confirmed_at=NOW(), updated_at=NOW() WHERE id=$1", [attempt.id]);
     await client.query(
       `UPDATE withdrawal_requests SET status='confirmed', confirmed_at=NOW(), tx_signature=$2,
-         last_error=NULL, updated_at=NOW() WHERE id=$1`,
-      [attempt.withdrawal_request_id, attempt.expected_signature],
+         actual_network_fee_usd=$3,last_error=NULL, updated_at=NOW() WHERE id=$1`,
+      [attempt.withdrawal_request_id, attempt.expected_signature,
+        Number(networkFeeLamports) / 1_000_000_000 * Number(request.sol_price_usd)],
     );
     await client.query(
       `UPDATE transactions SET status='completed', tx_signature=$2, offer_id=$2

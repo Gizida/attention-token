@@ -53,6 +53,7 @@ export function validateProductionEnvironment(): void {
     'JWT_SECRET',
     'AUTH_DOMAIN',
     'AUTH_ORIGIN',
+    'OFFERWALL_GG_PUBLIC_KEY',
     'OFFERWALL_GG_SECRET_KEY',
     'TURNKEY_ORGANIZATION_ID',
     'TURNKEY_PRIVATE_KEY_ID',
@@ -63,6 +64,7 @@ export function validateProductionEnvironment(): void {
     'SOLANA_RPC_FALLBACK_URL',
     'CRON_SECRET',
     'COINGECKO_API_KEY',
+    'RISK_HMAC_SECRET',
   ].forEach((name) => requireServerEnv(name));
   validateOperationsAlertEnvironment();
 }

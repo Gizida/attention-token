@@ -3,7 +3,10 @@ import 'server-only';
 import { randomUUID } from 'crypto';
 
 import db from './db';
+import { getPayoutExposure } from './economics';
+import { MAX_UNREIMBURSED_EXPOSURE_USD } from './reward-policy';
 import { getCreditBalances, insertLedgerEntry } from './ledger';
+import { assessWithdrawalRisk } from './risk';
 import { sendOperationsAlert } from './operations-alerts';
 import { getSolPriceQuote } from './sol-price';
 import { envFlag } from './server-env';
@@ -35,6 +38,8 @@ export type WithdrawalRecord = {
   review_reason?: string | null;
   created_at: string | Date;
   updated_at: string | Date;
+  requires_step_up?: boolean;
+  step_up_verified_at?: string | Date | null;
 };
 
 const ACTIVE_DAILY_STATUSES = "('queued','signing','signed','submitted','confirmed')";
@@ -65,6 +70,8 @@ function publicWithdrawal(row: WithdrawalRecord) {
     statusMessage,
     createdAt: new Date(row.created_at).toISOString(),
     updatedAt: new Date(row.updated_at).toISOString(),
+    requiresStepUp: Boolean(row.requires_step_up),
+    stepUpVerified: Boolean(row.step_up_verified_at),
   };
 }
 
@@ -80,6 +87,7 @@ export async function createWithdrawalRequest(input: {
   userId: number;
   credits: unknown;
   idempotencyKey: string;
+  networkFingerprint?: string | null;
 }) {
   if (!envFlag('PAYOUTS_ENABLED')) throw new Error('Withdrawals are temporarily paused');
   if (!/^[A-Za-z0-9._:-]{8,128}$/.test(input.idempotencyKey)) {
@@ -109,6 +117,14 @@ export async function createWithdrawalRequest(input: {
     const balances = await getCreditBalances(client, input.userId);
     if (balances.available < credits) throw new Error('Insufficient available balance');
 
+    const estimatedFeeUsd = Math.max(0, Number(process.env.PAYOUT_ESTIMATED_NETWORK_FEE_USD || '0.01'));
+    const exposure = await getPayoutExposure(client);
+    if (exposure.exposureUsd + creditsToUsd(credits) + estimatedFeeUsd > MAX_UNREIMBURSED_EXPOSURE_USD) {
+      throw new Error('PAYOUT_CAPACITY_REACHED');
+    }
+    const risk = await assessWithdrawalRisk(client, input.userId, input.networkFingerprint ?? null);
+    const requiresStepUp = risk.reasons.length > 0;
+
     const daily = await client.query(
       `SELECT
          COALESCE(SUM(credits) FILTER (WHERE user_id = $1), 0) AS user_total,
@@ -124,17 +140,20 @@ export async function createWithdrawalRequest(input: {
     const automatic = envFlag('AUTO_PAYOUTS_ENABLED')
       && credits <= AUTO_DAILY_USER_CREDITS
       && userDaily + credits <= AUTO_DAILY_USER_CREDITS
-      && !platformLimitReached;
+      && !platformLimitReached
+      && !requiresStepUp;
     const status: WithdrawalStatus = automatic ? 'queued' : 'awaiting_review';
 
     const insert = await client.query(
       `INSERT INTO withdrawal_requests (
          id, user_id, destination_wallet, credits, usd_amount, sol_price_usd,
-         sol_lamports, status, idempotency_key, quote_observed_at, quote_expires_at
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+         sol_lamports, status, idempotency_key, quote_observed_at, quote_expires_at,
+         estimated_network_fee_usd,requires_step_up,risk_reasons
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb)
        RETURNING *`,
       [requestId, input.userId, userResult.rows[0].wallet_address, credits, creditsToUsd(credits),
-        quote.priceUsd, lamports.toString(), status, input.idempotencyKey, quote.observedAt, quoteExpiresAt],
+        quote.priceUsd, lamports.toString(), status, input.idempotencyKey, quote.observedAt, quoteExpiresAt,
+        estimatedFeeUsd, requiresStepUp, JSON.stringify(risk.reasons)],
     );
     created = insert.rows[0] as WithdrawalRecord;
     const reserved = await insertLedgerEntry(client, {
@@ -257,6 +276,9 @@ export async function approveWithdrawal(requestId: string, adminUserId: number):
     if (!request || request.status !== 'awaiting_review') {
       await client.query('ROLLBACK');
       return false;
+    }
+    if (request.requires_step_up && !request.step_up_verified_at) {
+      throw new Error('This request needs fresh wallet verification before approval');
     }
     if (new Date(request.quote_expires_at).getTime() <= Date.now()) {
       await client.query('ROLLBACK');

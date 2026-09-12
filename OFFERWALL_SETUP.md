@@ -35,3 +35,10 @@ The endpoint accepts Offerwall.gg's standard fields, verifies the HMAC signature
 Apply `migrations/001_offerwall_conversions.sql` to every deployed database before enabling the placement.
 
 Use the placement's test-postback button before enabling live traffic. A valid test should receive `200 OK` without changing a user's balance. Then change one signed field and verify that the endpoint responds with `403 FORBIDDEN`.
+
+
+## Beta placement settings
+
+Before enabling production traffic, set the placement currency rate to **75 credits per USD**, require signed wall links, and allow `attentiontoken.net` and its required preview domain. The server reconciliation job checks every API conversion against that 75-credit rate. Keep `payoutUsd` from callbacks as unverified reporting data; authenticated API reconciliation populates the authoritative payout.
+
+Use the support URL `https://offerwall.gg/wall/{PUBLIC_KEY}/support?userId={USER_ID}` for offer disputes.
